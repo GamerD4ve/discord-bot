@@ -3,16 +3,6 @@ Discord Activity Tracker — Bot + Dashboard API
 ================================================
 Requirements:
     pip install discord.py flask flask-cors
-
-Setup:
-    1. Go to https://discord.com/developers/applications
-    2. Create an app → Bot → copy the Token
-    3. Under "Privileged Gateway Intents", enable:
-         - PRESENCE INTENT
-         - SERVER MEMBERS INTENT
-         - MESSAGE CONTENT INTENT
-    4. Add BOT_TOKEN as an environment variable in Railway
-    5. Push to GitHub — Railway auto-deploys
 """
 
 import discord
@@ -31,7 +21,6 @@ DASHBOARD  = "."
 FLASK_PORT = int(os.environ.get("PORT", 8080))
 # ─────────────────────────────────────────────────────────────────────────────
 
-# ─── FLASK API ────────────────────────────────────────────────────────────────
 api = Flask(__name__, static_folder=DASHBOARD)
 CORS(api)
 
@@ -51,6 +40,7 @@ def init_db():
                 channel_name TEXT NOT NULL,
                 guild_id     TEXT NOT NULL,
                 hour         INTEGER NOT NULL,
+                day_of_week  INTEGER NOT NULL,
                 timestamp    TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS user_stats (
@@ -66,7 +56,10 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_channel ON messages(channel_id);
             CREATE INDEX IF NOT EXISTS idx_ts      ON messages(timestamp);
             CREATE INDEX IF NOT EXISTS idx_hour    ON messages(hour);
+            CREATE INDEX IF NOT EXISTS idx_dow     ON messages(day_of_week);
         """)
+
+# ─── ROUTES ──────────────────────────────────────────────────────────────────
 
 @api.route("/")
 def index():
@@ -94,50 +87,122 @@ def overview():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@api.route("/api/online")
+def online():
+    try:
+        count = sum(
+            1 for guild in bot.guilds
+            for member in guild.members
+            if member.status != discord.Status.offline and not member.bot
+        )
+        return jsonify({"online": count})
+    except Exception as e:
+        return jsonify({"online": 0, "error": str(e)})
+
 @api.route("/api/leaderboard")
 def leaderboard():
-    with get_db() as db:
-        rows = db.execute("""
-            SELECT user_id, username, msg_count, last_seen, first_seen, avatar_url
-            FROM user_stats ORDER BY msg_count DESC LIMIT 25
-        """).fetchall()
-    return jsonify([dict(r) for r in rows])
+    try:
+        with get_db() as db:
+            rows = db.execute("""
+                SELECT u.user_id, u.username, u.msg_count, u.last_seen,
+                       u.first_seen, u.avatar_url,
+                       COUNT(DISTINCT DATE(m.timestamp)) as active_days,
+                       SUM(CASE WHEN m.timestamp >= datetime('now','-7 days') THEN 1 ELSE 0 END) as recent_msgs
+                FROM user_stats u
+                LEFT JOIN messages m ON u.user_id = m.user_id
+                GROUP BY u.user_id
+                ORDER BY u.msg_count DESC LIMIT 25
+            """).fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            try:
+                days_since = max(1, (datetime.datetime.utcnow() -
+                    datetime.datetime.fromisoformat(r["first_seen"])).days)
+            except:
+                days_since = 1
+            consistency = min(100, ((r["active_days"] or 0) / days_since) * 100)
+            recency     = min(100, (r["recent_msgs"] or 0) * 10)
+            volume      = min(100, (r["msg_count"] or 0) / 10)
+            d["engagement_score"] = round(consistency * 0.4 + recency * 0.35 + volume * 0.25)
+            result.append(d)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @api.route("/api/channels")
 def channels():
-    with get_db() as db:
-        rows = db.execute("""
-            SELECT channel_name, COUNT(*) as cnt
-            FROM messages GROUP BY channel_id ORDER BY cnt DESC LIMIT 15
-        """).fetchall()
-    return jsonify([dict(r) for r in rows])
+    try:
+        with get_db() as db:
+            rows = db.execute("""
+                SELECT channel_name, COUNT(*) as cnt
+                FROM messages GROUP BY channel_id ORDER BY cnt DESC LIMIT 15
+            """).fetchall()
+        return jsonify([dict(r) for r in rows])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @api.route("/api/heatmap")
 def heatmap():
-    with get_db() as db:
-        rows = db.execute(
-            "SELECT hour, COUNT(*) as cnt FROM messages GROUP BY hour"
-        ).fetchall()
-    counts = {r["hour"]: r["cnt"] for r in rows}
-    return jsonify([{"hour": h, "count": counts.get(h, 0)} for h in range(24)])
+    try:
+        with get_db() as db:
+            rows = db.execute(
+                "SELECT hour, COUNT(*) as cnt FROM messages GROUP BY hour"
+            ).fetchall()
+        counts = {r["hour"]: r["cnt"] for r in rows}
+        return jsonify([{"hour": h, "count": counts.get(h, 0)} for h in range(24)])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @api.route("/api/daily")
 def daily():
-    with get_db() as db:
-        rows = db.execute("""
-            SELECT DATE(timestamp) as day, COUNT(*) as cnt
-            FROM messages GROUP BY day ORDER BY day DESC LIMIT 30
-        """).fetchall()
-    return jsonify(list(reversed([dict(r) for r in rows])))
+    try:
+        with get_db() as db:
+            rows = db.execute("""
+                SELECT DATE(timestamp) as day, COUNT(*) as cnt
+                FROM messages GROUP BY day ORDER BY day DESC LIMIT 30
+            """).fetchall()
+        return jsonify(list(reversed([dict(r) for r in rows])))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@api.route("/api/dayofweek")
+def dayofweek():
+    try:
+        with get_db() as db:
+            rows = db.execute("""
+                SELECT day_of_week, COUNT(*) as cnt
+                FROM messages GROUP BY day_of_week
+            """).fetchall()
+        days   = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        counts = {r["day_of_week"]: r["cnt"] for r in rows}
+        return jsonify([{"day": days[i], "count": counts.get(i, 0)} for i in range(7)])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@api.route("/api/newmembers")
+def newmembers():
+    try:
+        with get_db() as db:
+            rows = db.execute("""
+                SELECT strftime('%Y-W%W', first_seen) as week, COUNT(*) as cnt
+                FROM user_stats GROUP BY week ORDER BY week DESC LIMIT 12
+            """).fetchall()
+        return jsonify(list(reversed([dict(r) for r in rows])))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @api.route("/api/lastseen")
 def lastseen():
-    with get_db() as db:
-        rows = db.execute("""
-            SELECT username, msg_count, last_seen, first_seen
-            FROM user_stats ORDER BY last_seen DESC LIMIT 25
-        """).fetchall()
-    return jsonify([dict(r) for r in rows])
+    try:
+        with get_db() as db:
+            rows = db.execute("""
+                SELECT username, msg_count, last_seen, first_seen
+                FROM user_stats ORDER BY last_seen DESC LIMIT 25
+            """).fetchall()
+        return jsonify([dict(r) for r in rows])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # ─── DISCORD BOT ─────────────────────────────────────────────────────────────
 intents = discord.Intents.default()
@@ -156,17 +221,18 @@ async def on_ready():
 async def on_message(message):
     if message.author.bot or not message.guild:
         return
-    now  = datetime.datetime.utcnow().isoformat()
-    hour = datetime.datetime.utcnow().hour
-    avatar = str(message.author.display_avatar.url) if message.author.display_avatar else ""
+    now         = datetime.datetime.utcnow().isoformat()
+    hour        = datetime.datetime.utcnow().hour
+    day_of_week = datetime.datetime.utcnow().weekday()  # 0=Mon, 6=Sun
+    avatar      = str(message.author.display_avatar.url) if message.author.display_avatar else ""
     with get_db() as db:
         db.execute("""
             INSERT INTO messages
-                (user_id, username, channel_id, channel_name, guild_id, hour, timestamp)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                (user_id, username, channel_id, channel_name, guild_id, hour, day_of_week, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (str(message.author.id), str(message.author),
               str(message.channel.id), message.channel.name,
-              str(message.guild.id), hour, now))
+              str(message.guild.id), hour, day_of_week, now))
         db.execute("""
             INSERT INTO user_stats
                 (user_id, username, guild_id, msg_count, last_seen, first_seen, avatar_url)
