@@ -43,7 +43,8 @@ def init_db():
                     guild_id     TEXT NOT NULL,
                     hour         INTEGER NOT NULL,
                     day_of_week  INTEGER NOT NULL,
-                    timestamp    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    timestamp    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    UNIQUE(user_id, channel_id, timestamp)
                 );
                 CREATE TABLE IF NOT EXISTS user_stats (
                     user_id    TEXT PRIMARY KEY,
@@ -293,6 +294,91 @@ async def on_message(message):
     except Exception as e:
         print(f"DB error: {e}")
     await bot.process_commands(message)
+
+# ─── BACKFILL COMMAND ────────────────────────────────────────────────────────
+
+@bot.command(name="backfill")
+@commands.has_permissions(administrator=True)
+async def backfill(ctx, days: int = 30):
+    """
+    !backfill [days]
+    Crawls all channels and loads the last X days of history into the database.
+    Only usable by server admins. Default is 30 days.
+    Example: !backfill 7   (last week)
+             !backfill 30  (last month)
+             !backfill 90  (last 3 months)
+    """
+    if days < 1 or days > 365:
+        await ctx.send("❌ Please specify between 1 and 365 days.")
+        return
+
+    cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=days)
+    status_msg = await ctx.send(f"🔍 Starting backfill for the last **{days} days**... this may take a while!")
+
+    total_msgs  = 0
+    total_chans = 0
+    skipped     = 0
+
+    for channel in ctx.guild.text_channels:
+        # Skip channels the bot can't read
+        if not channel.permissions_for(ctx.guild.me).read_message_history:
+            skipped += 1
+            continue
+
+        chan_count = 0
+        try:
+            async for message in channel.history(limit=None, after=cutoff, oldest_first=True):
+                if message.author.bot:
+                    continue
+
+                ts          = message.created_at.replace(tzinfo=None)
+                hour        = ts.hour
+                day_of_week = ts.weekday()
+                avatar      = str(message.author.display_avatar.url) if message.author.display_avatar else ""
+
+                try:
+                    execute("""
+                        INSERT INTO messages
+                            (user_id, username, channel_id, channel_name, guild_id, hour, day_of_week, timestamp)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT DO NOTHING
+                    """, (str(message.author.id), str(message.author),
+                          str(channel.id), channel.name,
+                          str(ctx.guild.id), hour, day_of_week, ts))
+
+                    execute("""
+                        INSERT INTO user_stats
+                            (user_id, username, guild_id, msg_count, last_seen, first_seen, avatar_url)
+                        VALUES (%s, %s, %s, 1, %s, %s, %s)
+                        ON CONFLICT (user_id) DO UPDATE SET
+                            username   = EXCLUDED.username,
+                            msg_count  = user_stats.msg_count + 1,
+                            last_seen  = GREATEST(user_stats.last_seen, EXCLUDED.last_seen),
+                            first_seen = LEAST(user_stats.first_seen, EXCLUDED.first_seen),
+                            avatar_url = EXCLUDED.avatar_url
+                    """, (str(message.author.id), str(message.author),
+                          str(ctx.guild.id), ts, ts, avatar))
+
+                    chan_count  += 1
+                    total_msgs  += 1
+                except Exception as e:
+                    print(f"Backfill DB error: {e}")
+
+            if chan_count > 0:
+                total_chans += 1
+
+        except discord.Forbidden:
+            skipped += 1
+        except Exception as e:
+            print(f"Backfill channel error ({channel.name}): {e}")
+
+    await status_msg.edit(content=(
+        f"✅ **Backfill complete!**\n"
+        f"📨 **{total_msgs:,}** messages loaded from the last **{days}** days\n"
+        f"📣 **{total_chans}** channels scanned\n"
+        f"🔒 **{skipped}** channels skipped (no access)\n\n"
+        f"Refresh your dashboard to see the data!"
+    ))
 
 # ─── ENTRY POINT ─────────────────────────────────────────────────────────────
 if __name__ == "__main__":
