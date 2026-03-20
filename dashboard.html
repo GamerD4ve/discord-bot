@@ -240,7 +240,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 </div>
 
 <script>
-const API = "http://localhost:5000/api";
+const API = "/api";
 const charts = {};
 
 const fmt = n => n?.toLocaleString() ?? "—";
@@ -421,12 +421,15 @@ async function loadLeaderboard() {
 }
 
 async function loadAll() {
-  try {
-    await Promise.all([loadOverview(), loadDaily(), loadChannels(), loadHeatmap(), loadLeaderboard()]);
+  const results = await Promise.allSettled([
+    loadOverview(), loadDaily(), loadChannels(), loadHeatmap(), loadLeaderboard()
+  ]);
+  const anyOk = results.some(r => r.status === "fulfilled");
+  if (anyOk) {
     document.getElementById("dot").className = "live";
     document.getElementById("status-txt").textContent = "Live";
     document.getElementById("last-refresh").textContent = "Updated " + new Date().toLocaleTimeString();
-  } catch (e) {
+  } else {
     document.getElementById("dot").className = "";
     document.getElementById("status-txt").textContent = "Bot offline";
   }
