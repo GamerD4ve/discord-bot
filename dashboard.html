@@ -138,7 +138,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 <body>
 
 <div class="hdr">
-  <img src="/static/logo.png" class="hdr-logo" alt="Logo"
+  <img src="/logo.png" class="hdr-logo" alt="Logo"
        onerror="this.style.display='none';document.getElementById('logo-txt').style.display='block'"/>
   <span id="logo-txt" class="hdr-logo-fallback" style="display:none">THE CONSPIRACY PODCAST</span>
   <div class="hdr-divider"></div>
@@ -212,6 +212,28 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <span class="sw" style="background:var(--gold2);margin-left:10px"></span> Peak
       <span style="margin-left:auto;font-size:.68rem">All times UTC</span>
     </div>
+  </div>
+
+  <!-- Period Comparison -->
+  <div class="sec-title">PERIOD COMPARISON — LAST 30 DAYS VS PREVIOUS 30 DAYS</div>
+  <div class="row2eq" style="margin-bottom:22px">
+    <div class="card" style="display:flex;gap:20px;align-items:center;justify-content:center">
+      <div style="text-align:center">
+        <div style="color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Last 30 Days</div>
+        <div id="cmp-a" style="font-family:'Bebas Neue',sans-serif;font-size:3rem;color:var(--red2)">—</div>
+        <div style="color:var(--muted);font-size:.75rem">messages</div>
+      </div>
+      <div style="text-align:center">
+        <div id="cmp-arrow" style="font-size:2rem">—</div>
+        <div id="cmp-pct" style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem">—</div>
+      </div>
+      <div style="text-align:center">
+        <div style="color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Previous 30 Days</div>
+        <div id="cmp-b" style="font-family:'Bebas Neue',sans-serif;font-size:3rem;color:var(--muted)">—</div>
+        <div style="color:var(--muted);font-size:.75rem">messages</div>
+      </div>
+    </div>
+    <div class="card"><canvas id="cCompare" height="160"></canvas></div>
   </div>
 
   <!-- Member Roster + Leaderboard -->
@@ -447,10 +469,42 @@ async function loadLeaderboard() {
   });
 }
 
+async function loadCompare() {
+  const d = await get("/compare");
+  document.getElementById("cmp-a").textContent = fmt(d.period_a_total);
+  document.getElementById("cmp-b").textContent = fmt(d.period_b_total);
+  const up = d.change_pct >= 0;
+  document.getElementById("cmp-arrow").textContent = up ? "📈" : "📉";
+  document.getElementById("cmp-pct").textContent   = (up ? "+" : "") + d.change_pct + "%";
+  document.getElementById("cmp-pct").style.color   = up ? "var(--green)" : "var(--red2)";
+
+  mkChart("cCompare", {
+    type: "line",
+    data: {
+      labels: d.daily_a.map(r => r.day),
+      datasets: [
+        { label: "Last 30 days", data: d.daily_a.map(r => r.cnt),
+          borderColor: "#e74c3c", backgroundColor: "rgba(231,76,60,.1)",
+          fill: true, tension: 0.4, pointRadius: 2 },
+        { label: "Prev 30 days", data: d.daily_b.map(r => r.cnt),
+          borderColor: "#6b7280", backgroundColor: "rgba(107,114,128,.05)",
+          fill: true, tension: 0.4, pointRadius: 2, borderDash: [4,3] }
+      ]
+    },
+    options: { responsive: true,
+      plugins: { legend: { labels: { color: "#ffffff", boxWidth: 10, font: { size: 10 } } },
+        title: { display: true, text: "DAILY BREAKDOWN — PERIOD COMPARISON",
+          color: "#6b7280", font: { size: 10, weight: "600" }, padding: { bottom: 10 } } },
+      scales: { x: { ticks: { color: cd.color, maxTicksLimit: 8, font: { size: 10 } }, grid: cd.grid },
+                y: { ticks: { color: cd.color, font: { size: 10 } }, grid: cd.grid } }
+    }
+  });
+}
+
 async function loadAll() {
   const results = await Promise.allSettled([
     loadOverview(), loadDaily(), loadChannels(), loadDayOfWeek(),
-    loadNewMembers(), loadHeatmap(), loadLeaderboard()
+    loadNewMembers(), loadHeatmap(), loadLeaderboard(), loadCompare()
   ]);
   const anyOk = results.some(r => r.status === "fulfilled");
   if (anyOk) {
