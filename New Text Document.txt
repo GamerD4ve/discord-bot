@@ -1,0 +1,7 @@
+Setup:
+cmd prompt
+cd Desktop\discord-bot
+then
+python bot.py
+
+http://localhost:5000

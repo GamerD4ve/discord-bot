@@ -1,0 +1,4 @@
+discord_stats.db
+__pycache__/
+*.pyc
+.env
