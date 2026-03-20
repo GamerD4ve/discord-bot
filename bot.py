@@ -241,7 +241,7 @@ async def on_message(message):
 # ─── ENTRY POINT ─────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     flask_thread = threading.Thread(
-        target=lambda: api.run(port=FLASK_PORT, debug=False, use_reloader=False),
+        target=lambda: api.run(host="0.0.0.0", port=FLASK_PORT, debug=False, use_reloader=False),
         daemon=True
     )
     flask_thread.start()
