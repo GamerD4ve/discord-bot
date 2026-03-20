@@ -59,7 +59,8 @@ def init_db():
                 guild_id   TEXT NOT NULL,
                 msg_count  INTEGER DEFAULT 0,
                 last_seen  TEXT,
-                first_seen TEXT
+                first_seen TEXT,
+                avatar_url TEXT
             );
             CREATE INDEX IF NOT EXISTS idx_user    ON messages(user_id);
             CREATE INDEX IF NOT EXISTS idx_channel ON messages(channel_id);
@@ -73,27 +74,31 @@ def index():
 
 @api.route("/api/overview")
 def overview():
-    with get_db() as db:
-        msgs  = db.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
-        users = db.execute("SELECT COUNT(*) FROM user_stats").fetchone()[0]
-        chans = db.execute("SELECT COUNT(DISTINCT channel_id) FROM messages").fetchone()[0]
-        day   = db.execute("""
-            SELECT DATE(timestamp) as day, COUNT(*) as cnt
-            FROM messages GROUP BY day ORDER BY cnt DESC LIMIT 1
-        """).fetchone()
-    return jsonify({
-        "total_messages":        msgs,
-        "total_users":           users,
-        "total_channels":        chans,
-        "most_active_day":       day["day"] if day else None,
-        "most_active_day_count": day["cnt"] if day else 0,
-    })
+    try:
+        init_db()
+        with get_db() as db:
+            msgs  = db.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
+            users = db.execute("SELECT COUNT(*) FROM user_stats").fetchone()[0]
+            chans = db.execute("SELECT COUNT(DISTINCT channel_id) FROM messages").fetchone()[0]
+            day   = db.execute("""
+                SELECT DATE(timestamp) as day, COUNT(*) as cnt
+                FROM messages GROUP BY day ORDER BY cnt DESC LIMIT 1
+            """).fetchone()
+        return jsonify({
+            "total_messages":        msgs,
+            "total_users":           users,
+            "total_channels":        chans,
+            "most_active_day":       day["day"] if day else None,
+            "most_active_day_count": day["cnt"] if day else 0,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @api.route("/api/leaderboard")
 def leaderboard():
     with get_db() as db:
         rows = db.execute("""
-            SELECT user_id, username, msg_count, last_seen, first_seen
+            SELECT user_id, username, msg_count, last_seen, first_seen, avatar_url
             FROM user_stats ORDER BY msg_count DESC LIMIT 25
         """).fetchall()
     return jsonify([dict(r) for r in rows])
@@ -153,6 +158,7 @@ async def on_message(message):
         return
     now  = datetime.datetime.utcnow().isoformat()
     hour = datetime.datetime.utcnow().hour
+    avatar = str(message.author.display_avatar.url) if message.author.display_avatar else ""
     with get_db() as db:
         db.execute("""
             INSERT INTO messages
@@ -163,14 +169,15 @@ async def on_message(message):
               str(message.guild.id), hour, now))
         db.execute("""
             INSERT INTO user_stats
-                (user_id, username, guild_id, msg_count, last_seen, first_seen)
-            VALUES (?, ?, ?, 1, ?, ?)
+                (user_id, username, guild_id, msg_count, last_seen, first_seen, avatar_url)
+            VALUES (?, ?, ?, 1, ?, ?, ?)
             ON CONFLICT(user_id) DO UPDATE SET
-                username  = excluded.username,
-                msg_count = msg_count + 1,
-                last_seen = excluded.last_seen
+                username   = excluded.username,
+                msg_count  = msg_count + 1,
+                last_seen  = excluded.last_seen,
+                avatar_url = excluded.avatar_url
         """, (str(message.author.id), str(message.author),
-              str(message.guild.id), now, now))
+              str(message.guild.id), now, now, avatar))
     await bot.process_commands(message)
 
 # ─── ENTRY POINT ─────────────────────────────────────────────────────────────
