@@ -12,7 +12,7 @@ import psycopg2.extras
 import datetime
 import threading
 import os
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, send_from_directory, request
 from flask_cors import CORS
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
@@ -61,8 +61,6 @@ def init_db():
                 CREATE INDEX IF NOT EXISTS idx_hour    ON messages(hour);
                 CREATE INDEX IF NOT EXISTS idx_dow     ON messages(day_of_week);
             """)
-
-# ─── HELPERS ─────────────────────────────────────────────────────────────────
 
 def fetchall(query, params=()):
     with get_db() as db:
@@ -215,7 +213,6 @@ def newmembers():
 @api.route("/api/compare")
 def compare():
     try:
-        # Period A = last 30 days, Period B = 30-60 days ago
         rows = fetchall("""
             SELECT
                 SUM(CASE WHEN timestamp >= NOW() - INTERVAL '30 days' THEN 1 ELSE 0 END) as period_a,
@@ -227,8 +224,6 @@ def compare():
         a = r.get("period_a") or 0
         b = r.get("period_b") or 0
         change = round(((a - b) / b * 100) if b > 0 else 0, 1)
-
-        # Daily breakdown for both periods
         daily_a = fetchall("""
             SELECT DATE(timestamp) as day, COUNT(*) as cnt FROM messages
             WHERE timestamp >= NOW() - INTERVAL '30 days'
@@ -248,6 +243,167 @@ def compare():
             "period_b_label": "Previous 30 days",
             "daily_a": [{"day": str(r["day"]), "cnt": r["cnt"]} for r in daily_a],
             "daily_b": [{"day": str(r["day"]), "cnt": r["cnt"]} for r in daily_b],
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@api.route("/api/loyalty")
+def loyalty():
+    try:
+        rows = fetchall("""
+            SELECT u.user_id, u.msg_count,
+                   COUNT(DISTINCT DATE(m.timestamp)) as active_days,
+                   SUM(CASE WHEN m.timestamp >= NOW() - INTERVAL '7 days' THEN 1 ELSE 0 END) as recent_msgs
+            FROM user_stats u
+            LEFT JOIN messages m ON u.user_id = m.user_id
+            GROUP BY u.user_id, u.msg_count
+        """)
+        max_msgs = max((r["msg_count"] for r in rows), default=1)
+        core = active = member = 0
+        for r in rows:
+            ratio = r["msg_count"] / max_msgs
+            if ratio > 0.6:   core   += 1
+            elif ratio > 0.25: active += 1
+            else:              member += 1
+        return jsonify({"core": core, "active": active, "member": member})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@api.route("/api/radar")
+def radar():
+    try:
+        rows = fetchall("""
+            SELECT u.user_id, u.username, u.msg_count, u.first_seen, u.avatar_url,
+                   COUNT(DISTINCT DATE(m.timestamp)) as active_days,
+                   SUM(CASE WHEN m.timestamp >= NOW() - INTERVAL '7 days' THEN 1 ELSE 0 END) as recent_msgs
+            FROM user_stats u
+            LEFT JOIN messages m ON u.user_id = m.user_id
+            GROUP BY u.user_id, u.username, u.msg_count, u.first_seen, u.avatar_url
+            ORDER BY u.msg_count DESC LIMIT 5
+        """)
+        result = []
+        for r in rows:
+            try:
+                days_since = max(1, (datetime.datetime.utcnow() -
+                    r["first_seen"].replace(tzinfo=None)).days)
+            except:
+                days_since = 1
+            result.append({
+                "username":    r["username"].split("#")[0],
+                "avatar_url":  r["avatar_url"],
+                "volume":      min(100, round((r["msg_count"] or 0) / 10)),
+                "consistency": min(100, round(((r["active_days"] or 0) / days_since) * 100)),
+                "recency":     min(100, (r["recent_msgs"] or 0) * 10),
+            })
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@api.route("/api/timeline")
+def timeline():
+    try:
+        top = fetchall("""
+            SELECT user_id, username FROM user_stats
+            ORDER BY msg_count DESC LIMIT 10
+        """)
+        result = []
+        for u in top:
+            days = fetchall("""
+                SELECT DATE(timestamp) as day, COUNT(*) as cnt
+                FROM messages
+                WHERE user_id = %s AND timestamp >= NOW() - INTERVAL '30 days'
+                GROUP BY day ORDER BY day
+            """, (u["user_id"],))
+            result.append({
+                "username": u["username"].split("#")[0],
+                "days": [{"day": str(d["day"]), "cnt": d["cnt"]} for d in days]
+            })
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@api.route("/api/engagement-leaderboard")
+def engagement_leaderboard():
+    try:
+        rows = fetchall("""
+            SELECT u.user_id, u.username, u.msg_count, u.last_seen, u.first_seen, u.avatar_url,
+                   COUNT(DISTINCT DATE(m.timestamp)) as active_days,
+                   SUM(CASE WHEN m.timestamp >= NOW() - INTERVAL '7 days' THEN 1 ELSE 0 END) as recent_msgs
+            FROM user_stats u
+            LEFT JOIN messages m ON u.user_id = m.user_id
+            GROUP BY u.user_id, u.username, u.msg_count, u.last_seen, u.first_seen, u.avatar_url
+        """)
+        result = []
+        for r in rows:
+            try:
+                days_since = max(1, (datetime.datetime.utcnow() -
+                    r["first_seen"].replace(tzinfo=None)).days)
+            except:
+                days_since = 1
+            consistency = min(100, ((r["active_days"] or 0) / days_since) * 100)
+            recency     = min(100, (r["recent_msgs"] or 0) * 10)
+            volume      = min(100, (r["msg_count"] or 0) / 10)
+            score       = round(consistency * 0.4 + recency * 0.35 + volume * 0.25)
+            result.append({
+                "username":        r["username"].split("#")[0],
+                "avatar_url":      r["avatar_url"],
+                "engagement_score": score,
+                "last_seen":       r["last_seen"].isoformat() if r["last_seen"] else None,
+            })
+        result.sort(key=lambda x: x["engagement_score"], reverse=True)
+        return jsonify(result[:15])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@api.route("/api/daterange")
+def daterange():
+    try:
+        start = request.args.get("start")
+        end   = request.args.get("end")
+        if not start or not end:
+            return jsonify({"error": "start and end required"}), 400
+
+        total = fetchone("""
+            SELECT COUNT(*) as cnt FROM messages
+            WHERE timestamp >= %s AND timestamp <= %s
+        """, (start, end))
+
+        users = fetchone("""
+            SELECT COUNT(DISTINCT user_id) as cnt FROM messages
+            WHERE timestamp >= %s AND timestamp <= %s
+        """, (start, end))
+
+        daily = fetchall("""
+            SELECT DATE(timestamp) as day, COUNT(*) as cnt FROM messages
+            WHERE timestamp >= %s AND timestamp <= %s
+            GROUP BY day ORDER BY day
+        """, (start, end))
+
+        top_users = fetchall("""
+            SELECT username, COUNT(*) as cnt FROM messages
+            WHERE timestamp >= %s AND timestamp <= %s
+            GROUP BY username ORDER BY cnt DESC LIMIT 10
+        """, (start, end))
+
+        top_channels = fetchall("""
+            SELECT channel_name, COUNT(*) as cnt FROM messages
+            WHERE timestamp >= %s AND timestamp <= %s
+            GROUP BY channel_name ORDER BY cnt DESC LIMIT 8
+        """, (start, end))
+
+        peak_hour = fetchone("""
+            SELECT hour, COUNT(*) as cnt FROM messages
+            WHERE timestamp >= %s AND timestamp <= %s
+            GROUP BY hour ORDER BY cnt DESC LIMIT 1
+        """, (start, end))
+
+        return jsonify({
+            "total_messages":  total["cnt"] if total else 0,
+            "unique_users":    users["cnt"] if users else 0,
+            "peak_hour":       peak_hour["hour"] if peak_hour else None,
+            "daily":           [{"day": str(r["day"]), "cnt": r["cnt"]} for r in daily],
+            "top_users":       [dict(r) for r in top_users],
+            "top_channels":    [dict(r) for r in top_channels],
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -278,6 +434,7 @@ async def on_message(message):
         execute("""
             INSERT INTO messages (user_id, username, channel_id, channel_name, guild_id, hour, day_of_week, timestamp)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT DO NOTHING
         """, (str(message.author.id), str(message.author),
               str(message.channel.id), message.channel.name,
               str(message.guild.id), hour, day_of_week, now))
@@ -287,7 +444,7 @@ async def on_message(message):
             ON CONFLICT (user_id) DO UPDATE SET
                 username   = EXCLUDED.username,
                 msg_count  = user_stats.msg_count + 1,
-                last_seen  = EXCLUDED.last_seen,
+                last_seen  = GREATEST(user_stats.last_seen, EXCLUDED.last_seen),
                 avatar_url = EXCLUDED.avatar_url
         """, (str(message.author.id), str(message.author),
               str(message.guild.id), now, now, avatar))
@@ -295,47 +452,30 @@ async def on_message(message):
         print(f"DB error: {e}")
     await bot.process_commands(message)
 
-# ─── BACKFILL COMMAND ────────────────────────────────────────────────────────
-
 @bot.command(name="backfill")
 @commands.has_permissions(administrator=True)
 async def backfill(ctx, days: int = 30):
-    """
-    !backfill [days]
-    Crawls all channels and loads the last X days of history into the database.
-    Only usable by server admins. Default is 30 days.
-    Example: !backfill 7   (last week)
-             !backfill 30  (last month)
-             !backfill 90  (last 3 months)
-    """
     if days < 1 or days > 365:
         await ctx.send("❌ Please specify between 1 and 365 days.")
         return
-
-    cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=days)
-    status_msg = await ctx.send(f"🔍 Starting backfill for the last **{days} days**... this may take a while!")
-
+    cutoff      = datetime.datetime.utcnow() - datetime.timedelta(days=days)
+    status_msg  = await ctx.send(f"🔍 Starting backfill for the last **{days} days**... this may take a while!")
     total_msgs  = 0
     total_chans = 0
     skipped     = 0
-
     for channel in ctx.guild.text_channels:
-        # Skip channels the bot can't read
         if not channel.permissions_for(ctx.guild.me).read_message_history:
             skipped += 1
             continue
-
         chan_count = 0
         try:
             async for message in channel.history(limit=None, after=cutoff, oldest_first=True):
                 if message.author.bot:
                     continue
-
                 ts          = message.created_at.replace(tzinfo=None)
                 hour        = ts.hour
                 day_of_week = ts.weekday()
                 avatar      = str(message.author.display_avatar.url) if message.author.display_avatar else ""
-
                 try:
                     execute("""
                         INSERT INTO messages
@@ -345,7 +485,6 @@ async def backfill(ctx, days: int = 30):
                     """, (str(message.author.id), str(message.author),
                           str(channel.id), channel.name,
                           str(ctx.guild.id), hour, day_of_week, ts))
-
                     execute("""
                         INSERT INTO user_stats
                             (user_id, username, guild_id, msg_count, last_seen, first_seen, avatar_url)
@@ -358,20 +497,16 @@ async def backfill(ctx, days: int = 30):
                             avatar_url = EXCLUDED.avatar_url
                     """, (str(message.author.id), str(message.author),
                           str(ctx.guild.id), ts, ts, avatar))
-
-                    chan_count  += 1
-                    total_msgs  += 1
+                    chan_count += 1
+                    total_msgs += 1
                 except Exception as e:
                     print(f"Backfill DB error: {e}")
-
             if chan_count > 0:
                 total_chans += 1
-
         except discord.Forbidden:
             skipped += 1
         except Exception as e:
             print(f"Backfill channel error ({channel.name}): {e}")
-
     await status_msg.edit(content=(
         f"✅ **Backfill complete!**\n"
         f"📨 **{total_msgs:,}** messages loaded from the last **{days}** days\n"
