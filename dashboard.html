@@ -52,7 +52,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .btn{background:transparent;border:1px solid rgba(192,57,43,.4);color:var(--red2);
   padding:6px 16px;border-radius:5px;cursor:pointer;font-size:.75rem;font-weight:600;
   letter-spacing:.06em;text-transform:uppercase;transition:all .2s}
-.btn:hover{background:rgba(192,57,43,.15);border-color:var(--red2)}
+.btn:hover{background:rgba(192,57,43,.15);border-color:var(--red2);box-shadow:0 0 12px var(--glow)}
 #last-refresh{font-size:.7rem;color:var(--muted)}
 
 /* ── Layout ── */
@@ -61,16 +61,33 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   color:var(--red2);margin-bottom:16px;display:flex;align-items:center;gap:10px}
 .sec-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(192,57,43,.4),transparent)}
 
+/* ── Cards with glow ── */
+.card{
+  background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:22px;
+  box-shadow:0 0 18px rgba(192,57,43,.07), 0 4px 24px rgba(0,0,0,.4);
+  transition:box-shadow .3s, transform .2s;
+}
+.card:hover{
+  box-shadow:0 0 28px rgba(192,57,43,.14), 0 6px 30px rgba(0,0,0,.5);
+  transform:translateY(-1px);
+}
+
 /* ── Stat Cards ── */
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:22px}
-.sc{background:var(--surf);border:1px solid var(--border);border-radius:10px;
-  padding:20px 22px;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s}
-.sc:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,0,0,.4)}
+.sc{
+  background:var(--surf);border:1px solid var(--border);border-radius:10px;
+  padding:20px 22px;position:relative;overflow:hidden;transition:transform .2s,box-shadow .3s;
+  box-shadow:0 0 18px rgba(192,57,43,.07), 0 4px 24px rgba(0,0,0,.4);
+}
+.sc:hover{transform:translateY(-2px)}
 .sc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
 .sc.red::before{background:linear-gradient(90deg,var(--red),transparent)}
 .sc.gold::before{background:linear-gradient(90deg,var(--gold),transparent)}
 .sc.green::before{background:linear-gradient(90deg,var(--green),transparent)}
 .sc.sc-dim::before{background:linear-gradient(90deg,#3a4a5a,transparent)}
+.sc.red{box-shadow:0 0 22px rgba(192,57,43,.15), 0 4px 24px rgba(0,0,0,.4)}
+.sc.gold{box-shadow:0 0 22px rgba(212,160,23,.12), 0 4px 24px rgba(0,0,0,.4)}
+.sc.green{box-shadow:0 0 22px rgba(46,204,113,.1), 0 4px 24px rgba(0,0,0,.4)}
 .sc .lbl{color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px;font-weight:600}
 .sc .val{font-family:'Bebas Neue',sans-serif;font-size:2.6rem;line-height:1;letter-spacing:.02em}
 .sc.red .val{color:var(--red2);text-shadow:0 0 30px var(--glow)}
@@ -83,8 +100,8 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 /* ── Grid layouts ── */
 .row2{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}
 .row2eq{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
-.row3{display:grid;grid-template-columns:1.5fr 1fr;gap:14px;margin-bottom:14px}
-.card{background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:22px}
+.row3{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.row4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-bottom:14px}
 
 /* ── Heatmap ── */
 .hm-grid{display:grid;grid-template-columns:repeat(24,1fr);gap:4px;margin:12px 0 4px}
@@ -116,23 +133,37 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .bar-wrap{height:4px;border-radius:2px;background:var(--surf3);min-width:60px;overflow:hidden}
 .bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--red),var(--gold))}
 .ago{color:var(--muted);font-size:.76rem}
-
-/* ── Engagement score ring ── */
 .eng{display:inline-flex;align-items:center;justify-content:center;
-  width:34px;height:34px;border-radius:50%;font-size:.72rem;font-weight:700;
-  border:2px solid var(--surf3)}
+  width:34px;height:34px;border-radius:50%;font-size:.72rem;font-weight:700;border:2px solid var(--surf3)}
 .eng.high{border-color:var(--gold2);color:var(--gold2)}
 .eng.mid{border-color:var(--red2);color:var(--red2)}
 .eng.low{border-color:var(--muted);color:var(--muted)}
-
-/* ── Avatar ── */
 .av{width:32px;height:32px;border-radius:50%;background:var(--surf3);
   border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;
   font-size:.72rem;font-weight:700;color:var(--red2);flex-shrink:0;text-transform:uppercase;
   margin-right:8px;overflow:hidden}
 .av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 
-@media(max-width:900px){.row2,.row2eq,.row3{grid-template-columns:1fr}.wrap{padding:16px}}
+/* ── Date Range ── */
+.dr-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.dr-bar label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.dr-input{background:var(--surf2);border:1px solid var(--border);color:var(--text);
+  padding:7px 12px;border-radius:6px;font-size:.82rem;font-family:'Inter',sans-serif;
+  outline:none;transition:border .2s}
+.dr-input:focus{border-color:rgba(192,57,43,.6)}
+.dr-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.dr-stat{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;
+  box-shadow:0 0 14px rgba(192,57,43,.06)}
+.dr-stat .lbl{font-size:.67rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
+.dr-stat .val{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--red2)}
+
+/* ── Shortcut pills ── */
+.pill-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.pill{background:var(--surf2);border:1px solid var(--border);color:var(--muted);
+  padding:4px 12px;border-radius:20px;font-size:.72rem;cursor:pointer;transition:all .2s;font-weight:500}
+.pill:hover,.pill.active{background:rgba(192,57,43,.15);border-color:rgba(192,57,43,.5);color:var(--red2)}
+
+@media(max-width:900px){.row2,.row2eq,.row3,.row4{grid-template-columns:1fr}.wrap{padding:16px}}
 </style>
 </head>
 <body>
@@ -154,46 +185,21 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 
   <!-- KPI Cards -->
   <div class="stats">
-    <div class="sc red">
-      <div class="lbl">Total Messages</div>
-      <div class="val" id="s-msgs">—</div>
-      <div class="sub">across all channels</div>
-      <div class="corner">📡</div>
-    </div>
-    <div class="sc gold">
-      <div class="lbl">Active Members</div>
-      <div class="val" id="s-users">—</div>
-      <div class="sub">tracked individuals</div>
-      <div class="corner">👥</div>
-    </div>
-    <div class="sc green">
-      <div class="lbl">Online Now</div>
-      <div class="val" id="s-online">—</div>
-      <div class="sub">currently active</div>
-      <div class="corner">🟢</div>
-    </div>
-    <div class="sc sc-dim">
-      <div class="lbl">Channels Monitored</div>
-      <div class="val" id="s-chans">—</div>
-      <div class="sub">active channels</div>
-      <div class="corner">📂</div>
-    </div>
-    <div class="sc sc-dim">
-      <div class="lbl">Peak Day</div>
-      <div class="val" id="s-day" style="font-size:1.4rem;padding-top:6px">—</div>
-      <div class="sub" id="s-day-sub"></div>
-      <div class="corner">🔥</div>
-    </div>
+    <div class="sc red"><div class="lbl">Total Messages</div><div class="val" id="s-msgs">—</div><div class="sub">across all channels</div><div class="corner">📡</div></div>
+    <div class="sc gold"><div class="lbl">Active Members</div><div class="val" id="s-users">—</div><div class="sub">tracked individuals</div><div class="corner">👥</div></div>
+    <div class="sc green"><div class="lbl">Online Now</div><div class="val" id="s-online">—</div><div class="sub">currently active</div><div class="corner">🟢</div></div>
+    <div class="sc sc-dim"><div class="lbl">Channels Monitored</div><div class="val" id="s-chans">—</div><div class="sub">active channels</div><div class="corner">📂</div></div>
+    <div class="sc sc-dim"><div class="lbl">Peak Day</div><div class="val" id="s-day" style="font-size:1.4rem;padding-top:6px">—</div><div class="sub" id="s-day-sub"></div><div class="corner">🔥</div></div>
   </div>
 
-  <!-- Growth trend + Channels -->
+  <!-- Growth -->
   <div class="sec-title">COMMUNITY GROWTH</div>
   <div class="row2" style="margin-bottom:22px">
     <div class="card"><canvas id="cDaily" height="110"></canvas></div>
     <div class="card"><canvas id="cChannels" height="240"></canvas></div>
   </div>
 
-  <!-- Day of Week + New Members -->
+  <!-- Patterns -->
   <div class="sec-title">ENGAGEMENT PATTERNS</div>
   <div class="row2eq" style="margin-bottom:22px">
     <div class="card"><canvas id="cDow" height="160"></canvas></div>
@@ -236,21 +242,78 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <div class="card"><canvas id="cCompare" height="160"></canvas></div>
   </div>
 
-  <!-- Member Roster + Leaderboard -->
+  <!-- Member Deep Dives -->
+  <div class="sec-title">MEMBER INTELLIGENCE</div>
+  <div class="row4" style="margin-bottom:22px">
+    <!-- Loyalty Tiers -->
+    <div class="card">
+      <canvas id="cLoyalty" height="220"></canvas>
+    </div>
+    <!-- Radar -->
+    <div class="card" style="grid-column:span 2">
+      <canvas id="cRadar" height="220"></canvas>
+    </div>
+    <!-- Engagement Leaderboard -->
+    <div class="card" style="overflow-y:auto;max-height:320px">
+      <div style="color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px">🎯 Engagement Leaderboard</div>
+      <div id="engList"></div>
+    </div>
+  </div>
+
+  <!-- Activity Timeline -->
+  <div class="sec-title">30-DAY ACTIVITY TIMELINE — TOP MEMBERS</div>
+  <div class="card" style="margin-bottom:22px">
+    <canvas id="cTimeline" height="220"></canvas>
+  </div>
+
+  <!-- Operative Roster -->
   <div class="sec-title">OPERATIVE ROSTER — MOST LOYAL MEMBERS</div>
-  <div class="row3">
+  <div style="margin-bottom:22px">
     <div class="card">
       <table class="tbl">
-        <thead>
-          <tr>
-            <th>#</th><th>Member</th><th>Messages</th><th>Activity</th>
-            <th>Engagement</th><th>Status</th><th>Last Active</th>
-          </tr>
-        </thead>
+        <thead><tr>
+          <th>#</th><th>Member</th><th>Messages</th><th>Activity</th>
+          <th>Engagement</th><th>Status</th><th>Last Active</th>
+        </tr></thead>
         <tbody id="tMembers"></tbody>
       </table>
     </div>
-    <div class="card"><canvas id="cLb" height="380"></canvas></div>
+  </div>
+
+  <!-- Date Range Explorer -->
+  <div class="sec-title">📅 DATE RANGE EXPLORER</div>
+  <div class="card" style="margin-bottom:22px">
+    <div class="pill-bar">
+      <span class="pill" onclick="setRange(7)">Last 7 days</span>
+      <span class="pill" onclick="setRange(14)">Last 14 days</span>
+      <span class="pill" onclick="setRange(30)">Last 30 days</span>
+      <span class="pill" onclick="setRange(90)">Last 90 days</span>
+    </div>
+    <div class="dr-bar">
+      <label>From</label>
+      <input type="date" id="drStart" class="dr-input"/>
+      <label>To</label>
+      <input type="date" id="drEnd" class="dr-input"/>
+      <button class="btn" onclick="loadDateRange()">🔍 Analyse</button>
+    </div>
+    <div class="dr-stats">
+      <div class="dr-stat"><div class="lbl">Messages</div><div class="val" id="dr-msgs">—</div></div>
+      <div class="dr-stat"><div class="lbl">Unique Members</div><div class="val" id="dr-users">—</div></div>
+      <div class="dr-stat"><div class="lbl">Peak Hour (UTC)</div><div class="val" id="dr-peak">—</div></div>
+    </div>
+    <div class="row2eq">
+      <div><canvas id="drDaily" height="160"></canvas></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div style="color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">Top Members</div>
+          <div id="drUsers"></div>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">Top Channels</div>
+          <div id="drChannels"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -258,49 +321,48 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 <script>
 const API = "/api";
 const charts = {};
-const cd = { color: "#8b949e", grid: { color: "rgba(255,255,255,0.04)" } };
-
+const cd = { color:"#8b949e", grid:{ color:"rgba(255,255,255,0.04)" } };
 const fmt = n => n?.toLocaleString() ?? "—";
+const RADAR_COLORS = ["#e74c3c","#d4a017","#2ecc71","#3498db","#9b59b6"];
 
 function ago(s) {
   if (!s) return "Never";
   const d = (Date.now() - new Date(s)) / 1000;
-  if (d < 60)     return "Just now";
-  if (d < 3600)   return Math.floor(d/60) + "m ago";
-  if (d < 86400)  return Math.floor(d/3600) + "h ago";
+  if (d < 60)    return "Just now";
+  if (d < 3600)  return Math.floor(d/60) + "m ago";
+  if (d < 86400) return Math.floor(d/3600) + "h ago";
   return Math.floor(d/86400) + "d ago";
 }
-
 function loyaltyBadge(msgs, max) {
-  const r = msgs / max;
-  if (r > 0.6)  return `<span class="badge badge-gold">⭐ Core</span>`;
-  if (r > 0.25) return `<span class="badge badge-red">🔴 Active</span>`;
+  const r = msgs/max;
+  if (r > 0.6)   return `<span class="badge badge-gold">⭐ Core</span>`;
+  if (r > 0.25)  return `<span class="badge badge-red">🔴 Active</span>`;
   return `<span class="badge badge-dim">Member</span>`;
 }
-
 function engRing(score) {
-  const cls = score >= 70 ? "high" : score >= 35 ? "mid" : "low";
+  const cls = score>=70?"high":score>=35?"mid":"low";
   return `<span class="eng ${cls}">${score}</span>`;
 }
-
 function heatColor(r) {
-  if (r === 0) return "#1a2030";
-  if (r < 0.33) return `rgba(192,57,43,${0.2 + r * 1.2})`;
-  if (r < 0.66) return `rgba(192,57,43,${0.6 + r * 0.4})`;
-  const t = (r - 0.66) / 0.34;
-  const R = Math.round(192 + t*(212-192));
-  const G = Math.round(57  + t*(160-57));
-  const B = Math.round(43  + t*(23-43));
-  return `rgb(${R},${G},${B})`;
+  if (r===0) return "#1a2030";
+  if (r<0.33) return `rgba(192,57,43,${0.2+r*1.2})`;
+  if (r<0.66) return `rgba(192,57,43,${0.6+r*0.4})`;
+  const t=(r-0.66)/0.34;
+  return `rgb(${Math.round(192+t*20)},${Math.round(57+t*103)},${Math.round(43-t*20)})`;
 }
-
-function mkChart(id, cfg) {
+function mkChart(id,cfg) {
   if (charts[id]) charts[id].destroy();
-  charts[id] = new Chart(document.getElementById(id).getContext("2d"), cfg);
+  charts[id]=new Chart(document.getElementById(id).getContext("2d"),cfg);
+}
+async function get(path) { return fetch(API+path).then(r=>r.json()); }
+
+function avatar(d, size=28) {
+  const init = (d.username||"?").charAt(0);
+  if (d.avatar_url) return `<span class="av" style="width:${size}px;height:${size}px"><img src="${d.avatar_url}" onerror="this.parentElement.textContent='${init}'"></span>`;
+  return `<span class="av" style="width:${size}px;height:${size}px">${init}</span>`;
 }
 
-async function get(path) { return fetch(API + path).then(r => r.json()); }
-
+/* ── Overview ── */
 async function loadOverview() {
   const [d, o] = await Promise.all([get("/overview"), get("/online")]);
   document.getElementById("s-msgs").textContent   = fmt(d.total_messages);
@@ -313,212 +375,259 @@ async function loadOverview() {
   }
 }
 
+/* ── Daily ── */
 async function loadDaily() {
   const data = await get("/daily");
-  mkChart("cDaily", {
-    type: "line",
-    data: {
-      labels: data.map(d => d.day),
-      datasets: [{
-        label: "Messages", data: data.map(d => d.cnt),
-        borderColor: "#c0392b",
-        backgroundColor: ctx => {
-          const g = ctx.chart.ctx.createLinearGradient(0,0,0,200);
-          g.addColorStop(0,"rgba(192,57,43,.35)"); g.addColorStop(1,"rgba(192,57,43,0)");
-          return g;
-        },
-        fill: true, tension: 0.4, pointRadius: 2,
-        pointBackgroundColor: "#e74c3c", borderWidth: 2
-      }]
-    },
-    options: { responsive: true,
-      plugins: { legend: { display: false },
-        title: { display: true, text: "DAILY MESSAGE VOLUME — LAST 30 DAYS",
-          color: "#6b7280", font: { size: 10, weight: "600" }, padding: { bottom: 14 } } },
-      scales: { x: { ticks: { color: cd.color, maxTicksLimit: 8, font: { size: 10 } }, grid: cd.grid },
-                y: { ticks: { color: cd.color, font: { size: 10 } }, grid: cd.grid } }
-    }
-  });
+  mkChart("cDaily",{type:"line",data:{
+    labels:data.map(d=>d.day),
+    datasets:[{label:"Messages",data:data.map(d=>d.cnt),
+      borderColor:"#c0392b",
+      backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,200);g.addColorStop(0,"rgba(192,57,43,.35)");g.addColorStop(1,"rgba(192,57,43,0)");return g;},
+      fill:true,tension:0.4,pointRadius:2,pointBackgroundColor:"#e74c3c",borderWidth:2}]
+  },options:{responsive:true,plugins:{legend:{display:false},
+    title:{display:true,text:"DAILY MESSAGE VOLUME — LAST 30 DAYS",color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:14}}},
+    scales:{x:{ticks:{color:cd.color,maxTicksLimit:8,font:{size:10}},grid:cd.grid},y:{ticks:{color:cd.color,font:{size:10}},grid:cd.grid}}}});
 }
 
+/* ── Channels ── */
 async function loadChannels() {
   const data = await get("/channels");
-  const colors = ["#c0392b","#d4a017","#8b1a1a","#a0522d","#6b3a2a","#7f1d1d","#92400e","#78350f","#4a1942","#1e3a5f"];
-  mkChart("cChannels", {
-    type: "doughnut",
-    data: {
-      labels: data.map(d => "#" + d.channel_name),
-      datasets: [{ data: data.map(d => d.cnt), backgroundColor: data.map((_,i) => colors[i%colors.length]),
-        borderWidth: 0, hoverBorderWidth: 2, hoverBorderColor: "#e74c3c" }]
-    },
-    options: { responsive: true, cutout: "62%",
-      plugins: { legend: { position: "bottom", labels: { color: "#ffffff", boxWidth: 10, padding: 8, font: { size: 10 } } },
-        title: { display: true, text: "CHANNEL ENGAGEMENT",
-          color: "#6b7280", font: { size: 10, weight: "600" }, padding: { bottom: 10 } } }
-    }
-  });
+  const colors=["#c0392b","#d4a017","#8b1a1a","#a0522d","#6b3a2a","#7f1d1d","#92400e","#78350f","#4a1942","#1e3a5f"];
+  mkChart("cChannels",{type:"doughnut",data:{
+    labels:data.map(d=>"#"+d.channel_name),
+    datasets:[{data:data.map(d=>d.cnt),backgroundColor:data.map((_,i)=>colors[i%colors.length]),borderWidth:0,hoverBorderWidth:2,hoverBorderColor:"#e74c3c"}]
+  },options:{responsive:true,cutout:"62%",plugins:{
+    legend:{position:"bottom",labels:{color:"#ffffff",boxWidth:10,padding:8,font:{size:10}}},
+    title:{display:true,text:"CHANNEL ENGAGEMENT",color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:10}}}}});
 }
 
+/* ── Day of week ── */
 async function loadDayOfWeek() {
   const data = await get("/dayofweek");
-  const max  = Math.max(...data.map(d => d.count), 1);
-  mkChart("cDow", {
-    type: "bar",
-    data: {
-      labels: data.map(d => d.day),
-      datasets: [{
-        label: "Messages",
-        data: data.map(d => d.count),
-        backgroundColor: data.map(d => d.count === max ? "#d4a017" : "rgba(192,57,43,.7)"),
-        borderRadius: 5, borderSkipped: false
-      }]
-    },
-    options: { responsive: true,
-      plugins: { legend: { display: false },
-        title: { display: true, text: "MOST ACTIVE DAY OF WEEK",
-          color: "#6b7280", font: { size: 10, weight: "600" }, padding: { bottom: 14 } } },
-      scales: { x: { ticks: { color: "#ffffff", font: { size: 11 } }, grid: { display: false } },
-                y: { ticks: { color: cd.color, font: { size: 10 } }, grid: cd.grid } }
-    }
-  });
+  const max  = Math.max(...data.map(d=>d.count),1);
+  mkChart("cDow",{type:"bar",data:{
+    labels:data.map(d=>d.day),
+    datasets:[{data:data.map(d=>d.count),backgroundColor:data.map(d=>d.count===max?"#d4a017":"rgba(192,57,43,.7)"),borderRadius:5,borderSkipped:false}]
+  },options:{responsive:true,plugins:{legend:{display:false},
+    title:{display:true,text:"MOST ACTIVE DAY OF WEEK",color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:14}}},
+    scales:{x:{ticks:{color:"#ffffff",font:{size:11}},grid:{display:false}},y:{ticks:{color:cd.color,font:{size:10}},grid:cd.grid}}}});
 }
 
+/* ── New Members ── */
 async function loadNewMembers() {
   const data = await get("/newmembers");
-  mkChart("cNewMembers", {
-    type: "bar",
-    data: {
-      labels: data.map(d => d.week),
-      datasets: [{
-        label: "New Members",
-        data: data.map(d => d.cnt),
-        backgroundColor: "rgba(46,204,113,.7)",
-        borderRadius: 5, borderSkipped: false
-      }]
-    },
-    options: { responsive: true,
-      plugins: { legend: { display: false },
-        title: { display: true, text: "NEW MEMBERS PER WEEK",
-          color: "#6b7280", font: { size: 10, weight: "600" }, padding: { bottom: 14 } } },
-      scales: { x: { ticks: { color: cd.color, maxTicksLimit: 6, font: { size: 10 } }, grid: { display: false } },
-                y: { ticks: { color: cd.color, font: { size: 10 } }, grid: cd.grid } }
-    }
-  });
+  mkChart("cNewMembers",{type:"bar",data:{
+    labels:data.map(d=>d.week),
+    datasets:[{label:"New Members",data:data.map(d=>d.cnt),backgroundColor:"rgba(46,204,113,.7)",borderRadius:5,borderSkipped:false}]
+  },options:{responsive:true,plugins:{legend:{display:false},
+    title:{display:true,text:"NEW MEMBERS PER WEEK",color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:14}}},
+    scales:{x:{ticks:{color:cd.color,maxTicksLimit:6,font:{size:10}},grid:{display:false}},y:{ticks:{color:cd.color,font:{size:10}},grid:cd.grid}}}});
 }
 
+/* ── Heatmap ── */
 async function loadHeatmap() {
   const data = await get("/heatmap");
-  const max  = Math.max(...data.map(d => d.count), 1);
-  const g = document.getElementById("hmGrid");
-  const l = document.getElementById("hmLabels");
-  g.innerHTML = ""; l.innerHTML = "";
-  data.forEach(d => {
-    const c = document.createElement("div"); c.className = "hm-cell";
-    c.style.background = heatColor(d.count / max);
-    c.innerHTML = `<span class="tip">${String(d.hour).padStart(2,"0")}:00 UTC — ${fmt(d.count)} msgs</span>`;
+  const max  = Math.max(...data.map(d=>d.count),1);
+  const g=document.getElementById("hmGrid"), l=document.getElementById("hmLabels");
+  g.innerHTML=""; l.innerHTML="";
+  data.forEach(d=>{
+    const c=document.createElement("div"); c.className="hm-cell";
+    c.style.background=heatColor(d.count/max);
+    c.innerHTML=`<span class="tip">${String(d.hour).padStart(2,"0")}:00 UTC — ${fmt(d.count)} msgs</span>`;
     g.appendChild(c);
-    const s = document.createElement("span");
-    s.textContent = d.hour % 3 === 0 ? String(d.hour).padStart(2,"0") : "";
+    const s=document.createElement("span");
+    s.textContent=d.hour%3===0?String(d.hour).padStart(2,"0"):"";
     l.appendChild(s);
   });
 }
 
-async function loadLeaderboard() {
-  const data = await get("/leaderboard");
-  const max  = data[0]?.msg_count || 1;
-  const medals = ["🥇","🥈","🥉"];
-
-  document.getElementById("tMembers").innerHTML = data.slice(0, 20).map((d, i) => {
-    const initial = d.username.charAt(0);
-    const avatar  = d.avatar_url
-      ? `<img src="${d.avatar_url}" alt="${initial}" onerror="this.parentElement.textContent='${initial}'">`
-      : initial;
-    const rankCls = i < 3 ? "rank top" : "rank";
-    const medal   = medals[i] ?? (i + 1);
-    return `<tr>
-      <td><span class="${rankCls}">${medal}</span></td>
-      <td style="display:flex;align-items:center">
-        <span class="av">${avatar}</span>
-        <span class="uname">${d.username.split("#")[0]}</span>
-      </td>
-      <td style="font-weight:700">${fmt(d.msg_count)}</td>
-      <td><div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(d.msg_count/max*100)}%"></div></div></td>
-      <td>${engRing(d.engagement_score ?? 0)}</td>
-      <td>${loyaltyBadge(d.msg_count, max)}</td>
-      <td><span class="ago">${ago(d.last_seen)}</span></td>
-    </tr>`;
-  }).join("");
-
-  mkChart("cLb", {
-    type: "bar",
-    data: {
-      labels: data.slice(0,10).map(d => d.username.split("#")[0]),
-      datasets: [{
-        data: data.slice(0,10).map(d => d.msg_count),
-        backgroundColor: data.slice(0,10).map((_,i) => i===0?"#d4a017":i===1?"#9a9a9a":i===2?"#a0522d":"rgba(192,57,43,.6)"),
-        borderRadius: 4, borderSkipped: false
-      }]
-    },
-    options: { indexAxis: "y", responsive: true,
-      plugins: { legend: { display: false },
-        title: { display: true, text: "TOP 10 OPERATIVES",
-          color: "#6b7280", font: { size: 10, weight: "600" }, padding: { bottom: 14 } } },
-      scales: { x: { ticks: { color: cd.color, font: { size: 10 } }, grid: cd.grid },
-                y: { ticks: { color: "#ffffff", font: { size: 11, weight: "500" } }, grid: { display: false } } }
-    }
-  });
-}
-
+/* ── Compare ── */
 async function loadCompare() {
   const d = await get("/compare");
   document.getElementById("cmp-a").textContent = fmt(d.period_a_total);
   document.getElementById("cmp-b").textContent = fmt(d.period_b_total);
   const up = d.change_pct >= 0;
-  document.getElementById("cmp-arrow").textContent = up ? "📈" : "📉";
-  document.getElementById("cmp-pct").textContent   = (up ? "+" : "") + d.change_pct + "%";
-  document.getElementById("cmp-pct").style.color   = up ? "var(--green)" : "var(--red2)";
-
-  mkChart("cCompare", {
-    type: "line",
-    data: {
-      labels: d.daily_a.map(r => r.day),
-      datasets: [
-        { label: "Last 30 days", data: d.daily_a.map(r => r.cnt),
-          borderColor: "#e74c3c", backgroundColor: "rgba(231,76,60,.1)",
-          fill: true, tension: 0.4, pointRadius: 2 },
-        { label: "Prev 30 days", data: d.daily_b.map(r => r.cnt),
-          borderColor: "#6b7280", backgroundColor: "rgba(107,114,128,.05)",
-          fill: true, tension: 0.4, pointRadius: 2, borderDash: [4,3] }
-      ]
-    },
-    options: { responsive: true,
-      plugins: { legend: { labels: { color: "#ffffff", boxWidth: 10, font: { size: 10 } } },
-        title: { display: true, text: "DAILY BREAKDOWN — PERIOD COMPARISON",
-          color: "#6b7280", font: { size: 10, weight: "600" }, padding: { bottom: 10 } } },
-      scales: { x: { ticks: { color: cd.color, maxTicksLimit: 8, font: { size: 10 } }, grid: cd.grid },
-                y: { ticks: { color: cd.color, font: { size: 10 } }, grid: cd.grid } }
-    }
-  });
+  document.getElementById("cmp-arrow").textContent = up?"📈":"📉";
+  document.getElementById("cmp-pct").textContent   = (up?"+":"")+d.change_pct+"%";
+  document.getElementById("cmp-pct").style.color   = up?"var(--green)":"var(--red2)";
+  mkChart("cCompare",{type:"line",data:{
+    labels:d.daily_a.map(r=>r.day),
+    datasets:[
+      {label:"Last 30 days",data:d.daily_a.map(r=>r.cnt),borderColor:"#e74c3c",backgroundColor:"rgba(231,76,60,.1)",fill:true,tension:0.4,pointRadius:2},
+      {label:"Prev 30 days",data:d.daily_b.map(r=>r.cnt),borderColor:"#6b7280",backgroundColor:"rgba(107,114,128,.05)",fill:true,tension:0.4,pointRadius:2,borderDash:[4,3]}
+    ]
+  },options:{responsive:true,plugins:{
+    legend:{labels:{color:"#ffffff",boxWidth:10,font:{size:10}}},
+    title:{display:true,text:"DAILY BREAKDOWN — PERIOD COMPARISON",color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:10}}},
+    scales:{x:{ticks:{color:cd.color,maxTicksLimit:8,font:{size:10}},grid:cd.grid},y:{ticks:{color:cd.color,font:{size:10}},grid:cd.grid}}}});
 }
 
+/* ── Loyalty Donut ── */
+async function loadLoyalty() {
+  const d = await get("/loyalty");
+  mkChart("cLoyalty",{type:"doughnut",data:{
+    labels:["⭐ Core","🔴 Active","Member"],
+    datasets:[{data:[d.core,d.active,d.member],backgroundColor:["#d4a017","#c0392b","#2e3a4a"],borderWidth:0,hoverBorderWidth:2,hoverBorderColor:"#fff"}]
+  },options:{responsive:true,cutout:"55%",plugins:{
+    legend:{position:"bottom",labels:{color:"#ffffff",boxWidth:10,padding:8,font:{size:11}}},
+    title:{display:true,text:"LOYALTY TIER DISTRIBUTION",color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:10}}}}});
+}
+
+/* ── Radar ── */
+async function loadRadar() {
+  const data = await get("/radar");
+  mkChart("cRadar",{type:"radar",data:{
+    labels:["Volume","Consistency","Recency"],
+    datasets:data.map((d,i)=>({
+      label:d.username,
+      data:[d.volume,d.consistency,d.recency],
+      borderColor:RADAR_COLORS[i],
+      backgroundColor:RADAR_COLORS[i].replace(")",",0.08)").replace("rgb","rgba"),
+      pointBackgroundColor:RADAR_COLORS[i],
+      borderWidth:2,pointRadius:3
+    }))
+  },options:{responsive:true,scales:{r:{
+    ticks:{color:"#6b7280",font:{size:9},backdropColor:"transparent"},
+    grid:{color:"rgba(255,255,255,.06)"},
+    pointLabels:{color:"#ffffff",font:{size:11,weight:"600"}},
+    min:0,max:100
+  }},plugins:{
+    legend:{position:"bottom",labels:{color:"#ffffff",boxWidth:10,padding:8,font:{size:10}}},
+    title:{display:true,text:"TOP 5 MEMBERS — VOLUME · CONSISTENCY · RECENCY",color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:10}}}}});
+}
+
+/* ── Engagement Leaderboard ── */
+async function loadEngLeaderboard() {
+  const data = await get("/engagement-leaderboard");
+  const max  = data[0]?.engagement_score || 1;
+  document.getElementById("engList").innerHTML = data.slice(0,12).map((d,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--muted);width:18px">${i+1}</span>
+      ${avatar(d,24)}
+      <span style="flex:1;font-size:.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.username}</span>
+      <div style="width:60px"><div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(d.engagement_score/max*100)}%"></div></div></div>
+      ${engRing(d.engagement_score)}
+    </div>`).join("");
+}
+
+/* ── Timeline ── */
+async function loadTimeline() {
+  const data = await get("/timeline");
+  const allDays = [...new Set(data.flatMap(u=>u.days.map(d=>d.day)))].sort();
+  mkChart("cTimeline",{type:"bar",data:{
+    labels:allDays,
+    datasets:data.map((u,i)=>{
+      const map=Object.fromEntries(u.days.map(d=>[d.day,d.cnt]));
+      return {
+        label:u.username,
+        data:allDays.map(d=>map[d]||0),
+        backgroundColor:RADAR_COLORS[i%RADAR_COLORS.length]+"99",
+        borderColor:RADAR_COLORS[i%RADAR_COLORS.length],
+        borderWidth:1,borderRadius:2
+      };
+    })
+  },options:{responsive:true,plugins:{
+    legend:{position:"bottom",labels:{color:"#ffffff",boxWidth:10,padding:6,font:{size:9}}},
+    title:{display:true,text:"DAILY ACTIVITY — TOP 10 MEMBERS — LAST 30 DAYS",color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:14}}},
+    scales:{
+      x:{stacked:true,ticks:{color:cd.color,maxTicksLimit:10,font:{size:9}},grid:cd.grid},
+      y:{stacked:true,ticks:{color:cd.color,font:{size:10}},grid:cd.grid}}}});
+}
+
+/* ── Leaderboard table ── */
+async function loadLeaderboard() {
+  const data = await get("/leaderboard");
+  const max  = data[0]?.msg_count||1;
+  const medals=["🥇","🥈","🥉"];
+  document.getElementById("tMembers").innerHTML = data.slice(0,20).map((d,i)=>{
+    const init = d.username.charAt(0);
+    const av   = d.avatar_url
+      ? `<span class="av"><img src="${d.avatar_url}" onerror="this.parentElement.textContent='${init}'"></span>`
+      : `<span class="av">${init}</span>`;
+    return `<tr>
+      <td><span class="${i<3?"rank top":"rank"}">${medals[i]??i+1}</span></td>
+      <td style="display:flex;align-items:center">${av}<span class="uname">${d.username.split("#")[0]}</span></td>
+      <td style="font-weight:700">${fmt(d.msg_count)}</td>
+      <td><div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(d.msg_count/max*100)}%"></div></div></td>
+      <td>${engRing(d.engagement_score??0)}</td>
+      <td>${loyaltyBadge(d.msg_count,max)}</td>
+      <td><span class="ago">${ago(d.last_seen)}</span></td>
+    </tr>`;
+  }).join("");
+}
+
+/* ── Date Range ── */
+function setRange(days) {
+  const end   = new Date();
+  const start = new Date(); start.setDate(start.getDate()-days);
+  document.getElementById("drStart").value = start.toISOString().split("T")[0];
+  document.getElementById("drEnd").value   = end.toISOString().split("T")[0];
+  document.querySelectorAll(".pill").forEach(p=>p.classList.remove("active"));
+  event.target.classList.add("active");
+  loadDateRange();
+}
+
+async function loadDateRange() {
+  const start = document.getElementById("drStart").value;
+  const end   = document.getElementById("drEnd").value;
+  if (!start || !end) return;
+
+  const d = await fetch(`${API}/daterange?start=${start}&end=${end}`).then(r=>r.json());
+  document.getElementById("dr-msgs").textContent  = fmt(d.total_messages);
+  document.getElementById("dr-users").textContent = fmt(d.unique_users);
+  document.getElementById("dr-peak").textContent  = d.peak_hour!=null ? `${String(d.peak_hour).padStart(2,"0")}:00` : "—";
+
+  mkChart("drDaily",{type:"line",data:{
+    labels:d.daily.map(r=>r.day),
+    datasets:[{label:"Messages",data:d.daily.map(r=>r.cnt),
+      borderColor:"#e74c3c",backgroundColor:"rgba(231,76,60,.12)",fill:true,tension:0.4,pointRadius:2}]
+  },options:{responsive:true,plugins:{legend:{display:false},
+    title:{display:true,text:`MESSAGES: ${start} → ${end}`,color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:10}}},
+    scales:{x:{ticks:{color:cd.color,maxTicksLimit:8,font:{size:10}},grid:cd.grid},y:{ticks:{color:cd.color,font:{size:10}},grid:cd.grid}}}});
+
+  const maxU = d.top_users[0]?.cnt||1;
+  document.getElementById("drUsers").innerHTML = (d.top_users||[]).map(u=>`
+    <div style="margin-bottom:7px">
+      <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:2px">
+        <span>${u.username.split("#")[0]}</span><span style="color:var(--muted)">${fmt(u.cnt)}</span>
+      </div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(u.cnt/maxU*100)}%"></div></div>
+    </div>`).join("");
+
+  const maxC = d.top_channels[0]?.cnt||1;
+  document.getElementById("drChannels").innerHTML = (d.top_channels||[]).map(c=>`
+    <div style="margin-bottom:7px">
+      <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:2px">
+        <span>#${c.channel_name}</span><span style="color:var(--muted)">${fmt(c.cnt)}</span>
+      </div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(c.cnt/maxC*100)}%"></div></div>
+    </div>`).join("");
+}
+
+/* ── Load all ── */
 async function loadAll() {
   const results = await Promise.allSettled([
     loadOverview(), loadDaily(), loadChannels(), loadDayOfWeek(),
-    loadNewMembers(), loadHeatmap(), loadLeaderboard(), loadCompare()
+    loadNewMembers(), loadHeatmap(), loadCompare(),
+    loadLoyalty(), loadRadar(), loadEngLeaderboard(),
+    loadTimeline(), loadLeaderboard()
   ]);
-  const anyOk = results.some(r => r.status === "fulfilled");
-  if (anyOk) {
-    document.getElementById("dot").className = "live";
-    document.getElementById("status-txt").textContent = "Live";
-    document.getElementById("last-refresh").textContent = "Updated " + new Date().toLocaleTimeString();
-  } else {
-    document.getElementById("dot").className = "";
-    document.getElementById("status-txt").textContent = "Bot offline";
-  }
+  const anyOk = results.some(r=>r.status==="fulfilled");
+  document.getElementById("dot").className = anyOk?"live":"";
+  document.getElementById("status-txt").textContent = anyOk?"Live":"Bot offline";
+  if (anyOk) document.getElementById("last-refresh").textContent = "Updated "+new Date().toLocaleTimeString();
 }
 
+// Default date range to last 7 days on load
+window.addEventListener("load",()=>{
+  const end=new Date(), start=new Date();
+  start.setDate(start.getDate()-7);
+  document.getElementById("drStart").value=start.toISOString().split("T")[0];
+  document.getElementById("drEnd").value=end.toISOString().split("T")[0];
+});
+
 loadAll();
-setInterval(loadAll, 30000);
+setInterval(loadAll,30000);
 </script>
 </body>
 </html>
