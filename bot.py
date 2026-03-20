@@ -11,12 +11,8 @@ Setup:
          - PRESENCE INTENT
          - SERVER MEMBERS INTENT
          - MESSAGE CONTENT INTENT
-    4. Paste your bot token below
-    5. Run:  python bot.py
-    6. Open: http://localhost:5000  in your browser
-
-Bot invite URL (replace CLIENT_ID with your app's Client ID):
-    https://discord.com/oauth2/authorize?client_id=CLIENT_ID&permissions=274877908992&scope=bot
+    4. Add BOT_TOKEN as an environment variable in Railway
+    5. Push to GitHub — Railway auto-deploys
 """
 
 import discord
@@ -25,33 +21,14 @@ import sqlite3
 import datetime
 import threading
 import os
-import hmac, hashlib
-from flask import Flask, jsonify, send_from_directory, request
+from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
-BOT_TOKEN   = os.environ.get("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
-DB_FILE     = "discord_stats.db"
-DASHBOARD   = "."          # folder containing dashboard.html
-FLASK_PORT  = int(os.environ.get("PORT", 5000))
-
-# ── Fourthwall ───────────────────────────────────────────────────────────────
-# 1. In Fourthwall: Settings → Webhooks → Add Endpoint
-#    URL: http://YOUR_PC_IP:5000/webhook/fourthwall
-#    (or use ngrok - see instructions below)
-# 2. Copy the signing secret Fourthwall gives you and paste it below
-# 3. Set the Discord channel ID where order alerts should be posted
-#    (Right-click a channel in Discord → Copy Channel ID — needs Developer Mode on)
-FW_SECRET          = "YOUR_FOURTHWALL_SIGNING_SECRET"  # or "" to skip verification
-FW_DISCORD_CHANNEL = 123456789012345678                # channel ID as a number
-
-ORDER_MESSAGE = """🛒 **New Order on The Conspiracy Podcast Store!**
-
-**{buyer}** just ordered **{product}**
-💰 Total: **{total}**
-📦 Status: {status}
-
-Thanks for supporting the podcast! 🎙️"""
+BOT_TOKEN  = os.environ.get("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
+DB_FILE    = "discord_stats.db"
+DASHBOARD  = "."
+FLASK_PORT = int(os.environ.get("PORT", 8080))
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ─── FLASK API ────────────────────────────────────────────────────────────────
@@ -62,6 +39,33 @@ def get_db():
     conn = sqlite3.connect(DB_FILE, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
+
+def init_db():
+    with get_db() as db:
+        db.executescript("""
+            CREATE TABLE IF NOT EXISTS messages (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id      TEXT NOT NULL,
+                username     TEXT NOT NULL,
+                channel_id   TEXT NOT NULL,
+                channel_name TEXT NOT NULL,
+                guild_id     TEXT NOT NULL,
+                hour         INTEGER NOT NULL,
+                timestamp    TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS user_stats (
+                user_id    TEXT PRIMARY KEY,
+                username   TEXT NOT NULL,
+                guild_id   TEXT NOT NULL,
+                msg_count  INTEGER DEFAULT 0,
+                last_seen  TEXT,
+                first_seen TEXT
+            );
+            CREATE INDEX IF NOT EXISTS idx_user    ON messages(user_id);
+            CREATE INDEX IF NOT EXISTS idx_channel ON messages(channel_id);
+            CREATE INDEX IF NOT EXISTS idx_ts      ON messages(timestamp);
+            CREATE INDEX IF NOT EXISTS idx_hour    ON messages(hour);
+        """)
 
 @api.route("/")
 def index():
@@ -78,11 +82,11 @@ def overview():
             FROM messages GROUP BY day ORDER BY cnt DESC LIMIT 1
         """).fetchone()
     return jsonify({
-        "total_messages":       msgs,
-        "total_users":          users,
-        "total_channels":       chans,
-        "most_active_day":      day["day"] if day else None,
-        "most_active_day_count":day["cnt"] if day else 0,
+        "total_messages":        msgs,
+        "total_users":           users,
+        "total_channels":        chans,
+        "most_active_day":       day["day"] if day else None,
+        "most_active_day_count": day["cnt"] if day else 0,
     })
 
 @api.route("/api/leaderboard")
@@ -121,47 +125,6 @@ def daily():
         """).fetchall()
     return jsonify(list(reversed([dict(r) for r in rows])))
 
-@api.route("/webhook/fourthwall", methods=["POST"])
-def fourthwall_webhook():
-    # ── Verify signature (if secret is set) ──────────────────────────────────
-    if FW_SECRET:
-        sig   = request.headers.get("X-Fourthwall-Signature", "")
-        body  = request.get_data()
-        expected = "sha256=" + hmac.new(
-            FW_SECRET.encode(), body, hashlib.sha256
-        ).hexdigest()
-        if not hmac.compare_digest(sig, expected):
-            return jsonify({"error": "Invalid signature"}), 401
-
-    data  = request.get_json(silent=True) or {}
-    event = data.get("type", "")
-
-    if event == "order.placed":
-        order   = data.get("data", {})
-        buyer   = order.get("buyerName") or order.get("email", "Someone")
-        total   = order.get("totalFormatted") or f"${order.get('totalAmount', '?')}"
-        status  = order.get("status", "Processing")
-        items   = order.get("lineItems", [])
-        product = items[0].get("productName", "an item") if items else "an item"
-        if len(items) > 1:
-            product += f" + {len(items)-1} more"
-
-        msg = ORDER_MESSAGE.format(
-            buyer=buyer, product=product, total=total, status=status
-        )
-        # Schedule the Discord message from the bot thread
-        import asyncio
-        asyncio.run_coroutine_threadsafe(_send_order_alert(msg), bot.loop)
-
-    return jsonify({"ok": True}), 200
-
-async def _send_order_alert(msg):
-    channel = bot.get_channel(FW_DISCORD_CHANNEL)
-    if channel:
-        await channel.send(msg)
-    else:
-        print(f"⚠️  Fourthwall: couldn't find channel {FW_DISCORD_CHANNEL}")
-
 @api.route("/api/lastseen")
 def lastseen():
     with get_db() as db:
@@ -179,36 +142,8 @@ intents.presences       = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-def init_db():
-    with get_db() as db:
-        db.executescript("""
-            CREATE TABLE IF NOT EXISTS messages (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id      TEXT NOT NULL,
-                username     TEXT NOT NULL,
-                channel_id   TEXT NOT NULL,
-                channel_name TEXT NOT NULL,
-                guild_id     TEXT NOT NULL,
-                hour         INTEGER NOT NULL,
-                timestamp    TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS user_stats (
-                user_id    TEXT PRIMARY KEY,
-                username   TEXT NOT NULL,
-                guild_id   TEXT NOT NULL,
-                msg_count  INTEGER DEFAULT 0,
-                last_seen  TEXT,
-                first_seen TEXT
-            );
-            CREATE INDEX IF NOT EXISTS idx_user    ON messages(user_id);
-            CREATE INDEX IF NOT EXISTS idx_channel ON messages(channel_id);
-            CREATE INDEX IF NOT EXISTS idx_ts      ON messages(timestamp);
-            CREATE INDEX IF NOT EXISTS idx_hour    ON messages(hour);
-        """)
-
 @bot.event
 async def on_ready():
-    init_db()
     print(f"✅  Logged in as {bot.user}")
     print(f"📊  Dashboard → http://localhost:{FLASK_PORT}")
 
@@ -240,6 +175,7 @@ async def on_message(message):
 
 # ─── ENTRY POINT ─────────────────────────────────────────────────────────────
 if __name__ == "__main__":
+    init_db()
     flask_thread = threading.Thread(
         target=lambda: api.run(host="0.0.0.0", port=FLASK_PORT, debug=False, use_reloader=False),
         daemon=True
