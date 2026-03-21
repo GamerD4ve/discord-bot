@@ -144,7 +144,15 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   margin-right:8px;overflow:hidden}
 .av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 
-/* ── Date Range ── */
+/* ── Order feed ── */
+.order-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.order-item:last-child{border-bottom:none}
+.order-icon{font-size:1.2rem;flex-shrink:0}
+.order-info{flex:1;min-width:0}
+.order-name{font-weight:600;font-size:.84rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.order-product{color:var(--muted);font-size:.74rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.order-amount{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:var(--green);flex-shrink:0}
+.order-time{color:var(--muted);font-size:.68rem;flex-shrink:0}
 .dr-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
 .dr-bar label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .dr-input{background:var(--surf2);border:1px solid var(--border);color:var(--text);
@@ -157,7 +165,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .dr-stat .lbl{font-size:.67rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
 .dr-stat .val{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--red2)}
 
-/* ── Shortcut pills ── */
+/* ── Date Range ── */
 .pill-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .pill{background:var(--surf2);border:1px solid var(--border);color:var(--muted);
   padding:4px 12px;border-radius:20px;font-size:.72rem;cursor:pointer;transition:all .2s;font-weight:500}
@@ -277,6 +285,35 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
         </tr></thead>
         <tbody id="tMembers"></tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- Fourthwall Storefront -->
+  <div class="sec-title">🛒 STOREFRONT INTELLIGENCE</div>
+  <div class="stats" style="margin-bottom:14px">
+    <div class="sc gold"><div class="lbl">Total Revenue</div><div class="val" id="fw-revenue">—</div><div class="sub">all time</div><div class="corner">💰</div></div>
+    <div class="sc red"><div class="lbl">Total Orders</div><div class="val" id="fw-orders">—</div><div class="sub">orders placed</div><div class="corner">📦</div></div>
+    <div class="sc sc-dim"><div class="lbl">Gift Purchases</div><div class="val" id="fw-gifts">—</div><div class="sub">gifted items</div><div class="corner">🎁</div></div>
+    <div class="sc sc-dim"><div class="lbl">Subscriptions</div><div class="val" id="fw-subs">—</div><div class="sub">active subs</div><div class="corner">🔔</div></div>
+  </div>
+  <div class="row3" style="margin-bottom:14px">
+    <div class="card"><canvas id="cFwRevenue" height="160"></canvas></div>
+    <div class="card"><canvas id="cFwProducts" height="160"></canvas></div>
+  </div>
+  <div class="row2eq" style="margin-bottom:22px">
+    <!-- Recent orders feed -->
+    <div class="card">
+      <div style="color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px">📋 Recent Orders</div>
+      <div id="fwOrderFeed"></div>
+    </div>
+    <!-- Last order highlight -->
+    <div class="card" style="display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:10px">
+      <div style="font-size:2.5rem">🛒</div>
+      <div style="color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.12em">Most Recent Order</div>
+      <div id="fw-last-name" style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--gold2)">—</div>
+      <div id="fw-last-product" style="color:var(--text);font-size:.9rem">—</div>
+      <div id="fw-last-amount" style="font-family:'Bebas Neue',sans-serif;font-size:2.4rem;color:var(--green)">—</div>
+      <div id="fw-last-time" style="color:var(--muted);font-size:.75rem">—</div>
     </div>
   </div>
 
@@ -604,13 +641,80 @@ async function loadDateRange() {
     </div>`).join("");
 }
 
+/* ── Fourthwall ── */
+async function loadFourthwall() {
+  const [ov, rev, prod, orders] = await Promise.all([
+    get("/fw/overview"), get("/fw/revenue"), get("/fw/products"), get("/fw/orders")
+  ]);
+
+  // KPI cards
+  document.getElementById("fw-revenue").textContent = ov.total_revenue != null ? `${Number(ov.total_revenue).toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2})}` : "—";
+  document.getElementById("fw-orders").textContent  = fmt(ov.total_orders);
+  document.getElementById("fw-gifts").textContent   = fmt(ov.total_gifts);
+  document.getElementById("fw-subs").textContent    = fmt(ov.total_subs);
+
+  // Last order highlight
+  if (ov.last_order) {
+    const lo = ov.last_order;
+    document.getElementById("fw-last-name").textContent    = lo.buyer_name || "—";
+    document.getElementById("fw-last-product").textContent = lo.product_name || "—";
+    document.getElementById("fw-last-amount").textContent  = lo.total_amount != null ? `${Number(lo.total_amount).toFixed(2)}` : "—";
+    document.getElementById("fw-last-time").textContent    = ago(lo.timestamp);
+  }
+
+  // Revenue chart
+  mkChart("cFwRevenue",{type:"bar",data:{
+    labels: rev.map(r=>r.day),
+    datasets:[
+      {label:"Revenue ($)",data:rev.map(r=>r.revenue),backgroundColor:"rgba(212,160,23,.7)",borderRadius:4,borderSkipped:false,yAxisID:"y"},
+      {label:"Orders",data:rev.map(r=>r.orders),type:"line",borderColor:"#e74c3c",backgroundColor:"rgba(231,76,60,.1)",fill:false,tension:0.4,pointRadius:2,yAxisID:"y1"}
+    ]
+  },options:{responsive:true,plugins:{
+    legend:{labels:{color:"#ffffff",boxWidth:10,font:{size:10}}},
+    title:{display:true,text:"REVENUE & ORDERS — LAST 30 DAYS",color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:10}}},
+    scales:{
+      x:{ticks:{color:cd.color,maxTicksLimit:8,font:{size:10}},grid:cd.grid},
+      y:{ticks:{color:"#d4a017",font:{size:10}},grid:cd.grid,position:"left"},
+      y1:{ticks:{color:"#e74c3c",font:{size:10}},grid:{display:false},position:"right"}
+    }}});
+
+  // Top products chart
+  mkChart("cFwProducts",{type:"bar",data:{
+    labels:prod.map(p=>p.product),
+    datasets:[{
+      label:"Orders",data:prod.map(p=>p.count),
+      backgroundColor:prod.map((_,i)=>["#d4a017","#c0392b","#2ecc71","#3498db","#9b59b6","#e67e22","#1abc9c","#e74c3c","#f39c12","#8e44ad"][i%10]),
+      borderRadius:4,borderSkipped:false
+    }]
+  },options:{responsive:true,indexAxis:"y",plugins:{
+    legend:{display:false},
+    title:{display:true,text:"TOP PRODUCTS BY ORDERS",color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:10}}},
+    scales:{
+      x:{ticks:{color:cd.color,font:{size:10}},grid:cd.grid},
+      y:{ticks:{color:"#ffffff",font:{size:10}},grid:{display:false}}
+    }}});
+
+  // Recent orders feed
+  const icons = {"order.placed":"🛒","gift.purchased":"🎁","subscription.purchased":"🔔"};
+  document.getElementById("fwOrderFeed").innerHTML = orders.slice(0,12).map(o=>`
+    <div class="order-item">
+      <span class="order-icon">${icons[o.event_type]||"📦"}</span>
+      <div class="order-info">
+        <div class="order-name">${o.buyer_name||"Unknown"}</div>
+        <div class="order-product">${o.product_name||"—"}</div>
+      </div>
+      <span class="order-amount">${Number(o.total_amount||0).toFixed(2)}</span>
+      <span class="order-time">${ago(o.timestamp)}</span>
+    </div>`).join("");
+}
+
 /* ── Load all ── */
 async function loadAll() {
   const results = await Promise.allSettled([
     loadOverview(), loadDaily(), loadChannels(), loadDayOfWeek(),
     loadNewMembers(), loadHeatmap(), loadCompare(),
     loadLoyalty(), loadRadar(), loadEngLeaderboard(),
-    loadTimeline(), loadLeaderboard()
+    loadTimeline(), loadLeaderboard(), loadFourthwall()
   ]);
   const anyOk = results.some(r=>r.status==="fulfilled");
   document.getElementById("dot").className = anyOk?"live":"";
