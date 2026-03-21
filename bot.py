@@ -22,11 +22,9 @@ BOT_TOKEN    = os.environ.get("BOT_TOKEN", "")
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 FLASK_PORT   = int(os.environ.get("PORT", 8080))
 DASHBOARD    = "."
-
-# Fourthwall — set these in Railway Variables tab
-FW_SECRET           = os.environ.get("FW_SECRET", "")       # signing secret from Fourthwall
-FW_ORDER_CHANNEL    = int(os.environ.get("FW_ORDER_CHANNEL", 0))    # Discord channel ID for orders
-FW_GIFT_CHANNEL     = int(os.environ.get("FW_GIFT_CHANNEL", 0))     # Discord channel ID for gifts/subs (can be same)
+FW_SECRET         = os.environ.get("FW_SECRET", "")
+FW_ORDER_CHANNEL  = int(os.environ.get("FW_ORDER_CHANNEL", 0) or 0)
+FW_GIFT_CHANNEL   = int(os.environ.get("FW_GIFT_CHANNEL", 0) or 0)
 # ─────────────────────────────────────────────────────────────────────────────
 
 api = Flask(__name__, static_folder=DASHBOARD)
@@ -76,12 +74,12 @@ def init_db():
                     raw          JSONB,
                     timestamp    TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 );
-                CREATE INDEX IF NOT EXISTS idx_user    ON messages(user_id);
-                CREATE INDEX IF NOT EXISTS idx_channel ON messages(channel_id);
-                CREATE INDEX IF NOT EXISTS idx_ts      ON messages(timestamp);
-                CREATE INDEX IF NOT EXISTS idx_hour    ON messages(hour);
-                CREATE INDEX IF NOT EXISTS idx_dow     ON messages(day_of_week);
-                CREATE INDEX IF NOT EXISTS idx_order_ts ON orders(timestamp);
+                CREATE INDEX IF NOT EXISTS idx_user      ON messages(user_id);
+                CREATE INDEX IF NOT EXISTS idx_channel   ON messages(channel_id);
+                CREATE INDEX IF NOT EXISTS idx_ts        ON messages(timestamp);
+                CREATE INDEX IF NOT EXISTS idx_hour      ON messages(hour);
+                CREATE INDEX IF NOT EXISTS idx_dow       ON messages(day_of_week);
+                CREATE INDEX IF NOT EXISTS idx_order_ts  ON orders(timestamp);
                 CREATE INDEX IF NOT EXISTS idx_order_type ON orders(event_type);
             """)
 
@@ -102,7 +100,7 @@ def execute(query, params=()):
         with db.cursor() as cur:
             cur.execute(query, params)
 
-# ─── DISCORD ROUTES ──────────────────────────────────────────────────────────
+# ─── STATIC ROUTES ───────────────────────────────────────────────────────────
 @api.route("/")
 def index():
     return send_from_directory(DASHBOARD, "dashboard.html")
@@ -111,16 +109,14 @@ def index():
 def logo():
     return send_from_directory(DASHBOARD, "logo.png")
 
+# ─── DISCORD API ROUTES ──────────────────────────────────────────────────────
 @api.route("/api/overview")
 def overview():
     try:
         msgs  = fetchone("SELECT COUNT(*) as c FROM messages")["c"]
         users = fetchone("SELECT COUNT(*) as c FROM user_stats")["c"]
         chans = fetchone("SELECT COUNT(DISTINCT channel_id) as c FROM messages")["c"]
-        day   = fetchone("""
-            SELECT DATE(timestamp) as day, COUNT(*) as cnt
-            FROM messages GROUP BY day ORDER BY cnt DESC LIMIT 1
-        """)
+        day   = fetchone("SELECT DATE(timestamp) as day, COUNT(*) as cnt FROM messages GROUP BY day ORDER BY cnt DESC LIMIT 1")
         return jsonify({
             "total_messages":        msgs,
             "total_users":           users,
@@ -147,8 +143,7 @@ def online():
 def leaderboard():
     try:
         rows = fetchall("""
-            SELECT u.user_id, u.username, u.msg_count, u.last_seen,
-                   u.first_seen, u.avatar_url,
+            SELECT u.user_id, u.username, u.msg_count, u.last_seen, u.first_seen, u.avatar_url,
                    COUNT(DISTINCT DATE(m.timestamp)) as active_days,
                    SUM(CASE WHEN m.timestamp >= NOW() - INTERVAL '7 days' THEN 1 ELSE 0 END) as recent_msgs
             FROM user_stats u
@@ -160,8 +155,7 @@ def leaderboard():
         for r in rows:
             d = dict(r)
             try:
-                days_since = max(1, (datetime.datetime.utcnow() -
-                    r["first_seen"].replace(tzinfo=None)).days)
+                days_since = max(1, (datetime.datetime.utcnow() - r["first_seen"].replace(tzinfo=None)).days)
             except:
                 days_since = 1
             consistency = min(100, ((r["active_days"] or 0) / days_since) * 100)
@@ -178,10 +172,7 @@ def leaderboard():
 @api.route("/api/channels")
 def channels():
     try:
-        rows = fetchall("""
-            SELECT channel_name, COUNT(*) as cnt
-            FROM messages GROUP BY channel_id, channel_name ORDER BY cnt DESC LIMIT 15
-        """)
+        rows = fetchall("SELECT channel_name, COUNT(*) as cnt FROM messages GROUP BY channel_id, channel_name ORDER BY cnt DESC LIMIT 15")
         return jsonify([dict(r) for r in rows])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -189,7 +180,7 @@ def channels():
 @api.route("/api/heatmap")
 def heatmap():
     try:
-        rows = fetchall("SELECT hour, COUNT(*) as cnt FROM messages GROUP BY hour")
+        rows   = fetchall("SELECT hour, COUNT(*) as cnt FROM messages GROUP BY hour")
         counts = {r["hour"]: r["cnt"] for r in rows}
         return jsonify([{"hour": h, "count": counts.get(h, 0)} for h in range(24)])
     except Exception as e:
@@ -198,20 +189,15 @@ def heatmap():
 @api.route("/api/daily")
 def daily():
     try:
-        rows = fetchall("""
-            SELECT DATE(timestamp) as day, COUNT(*) as cnt
-            FROM messages GROUP BY day ORDER BY day DESC LIMIT 30
-        """)
-        return jsonify(list(reversed([
-            {"day": str(r["day"]), "cnt": r["cnt"]} for r in rows
-        ])))
+        rows = fetchall("SELECT DATE(timestamp) as day, COUNT(*) as cnt FROM messages GROUP BY day ORDER BY day DESC LIMIT 30")
+        return jsonify(list(reversed([{"day": str(r["day"]), "cnt": r["cnt"]} for r in rows])))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @api.route("/api/dayofweek")
 def dayofweek():
     try:
-        rows = fetchall("SELECT day_of_week, COUNT(*) as cnt FROM messages GROUP BY day_of_week ORDER BY day_of_week")
+        rows   = fetchall("SELECT day_of_week, COUNT(*) as cnt FROM messages GROUP BY day_of_week ORDER BY day_of_week")
         days   = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
         counts = {r["day_of_week"]: r["cnt"] for r in rows}
         return jsonify([{"day": days[i], "count": counts.get(i, 0)} for i in range(7)])
@@ -221,10 +207,7 @@ def dayofweek():
 @api.route("/api/newmembers")
 def newmembers():
     try:
-        rows = fetchall("""
-            SELECT TO_CHAR(first_seen, 'IYYY-IW') as week, COUNT(*) as cnt
-            FROM user_stats GROUP BY week ORDER BY week DESC LIMIT 12
-        """)
+        rows = fetchall("SELECT TO_CHAR(first_seen, 'IYYY-IW') as week, COUNT(*) as cnt FROM user_stats GROUP BY week ORDER BY week DESC LIMIT 12")
         return jsonify(list(reversed([dict(r) for r in rows])))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -242,16 +225,9 @@ def compare():
         r = rows[0] if rows else {}
         a = r.get("period_a") or 0
         b = r.get("period_b") or 0
-        change = round(((a - b) / b * 100) if b > 0 else 0, 1)
-        daily_a = fetchall("""
-            SELECT DATE(timestamp) as day, COUNT(*) as cnt FROM messages
-            WHERE timestamp >= NOW() - INTERVAL '30 days' GROUP BY day ORDER BY day
-        """)
-        daily_b = fetchall("""
-            SELECT DATE(timestamp) as day, COUNT(*) as cnt FROM messages
-            WHERE timestamp >= NOW() - INTERVAL '60 days'
-              AND timestamp < NOW() - INTERVAL '30 days' GROUP BY day ORDER BY day
-        """)
+        change  = round(((a - b) / b * 100) if b > 0 else 0, 1)
+        daily_a = fetchall("SELECT DATE(timestamp) as day, COUNT(*) as cnt FROM messages WHERE timestamp >= NOW() - INTERVAL '30 days' GROUP BY day ORDER BY day")
+        daily_b = fetchall("SELECT DATE(timestamp) as day, COUNT(*) as cnt FROM messages WHERE timestamp >= NOW() - INTERVAL '60 days' AND timestamp < NOW() - INTERVAL '30 days' GROUP BY day ORDER BY day")
         return jsonify({
             "period_a_total": a, "period_b_total": b, "change_pct": change,
             "daily_a": [{"day": str(r["day"]), "cnt": r["cnt"]} for r in daily_a],
@@ -263,13 +239,7 @@ def compare():
 @api.route("/api/loyalty")
 def loyalty():
     try:
-        rows = fetchall("""
-            SELECT u.user_id, u.msg_count,
-                   COUNT(DISTINCT DATE(m.timestamp)) as active_days,
-                   SUM(CASE WHEN m.timestamp >= NOW() - INTERVAL '7 days' THEN 1 ELSE 0 END) as recent_msgs
-            FROM user_stats u LEFT JOIN messages m ON u.user_id = m.user_id
-            GROUP BY u.user_id, u.msg_count
-        """)
+        rows     = fetchall("SELECT u.user_id, u.msg_count FROM user_stats u")
         max_msgs = max((r["msg_count"] for r in rows), default=1)
         core = active = member = 0
         for r in rows:
@@ -285,11 +255,11 @@ def loyalty():
 def radar():
     try:
         rows = fetchall("""
-            SELECT u.user_id, u.username, u.msg_count, u.first_seen, u.avatar_url,
+            SELECT u.user_id, u.username, u.msg_count, u.first_seen,
                    COUNT(DISTINCT DATE(m.timestamp)) as active_days,
                    SUM(CASE WHEN m.timestamp >= NOW() - INTERVAL '7 days' THEN 1 ELSE 0 END) as recent_msgs
             FROM user_stats u LEFT JOIN messages m ON u.user_id = m.user_id
-            GROUP BY u.user_id, u.username, u.msg_count, u.first_seen, u.avatar_url
+            GROUP BY u.user_id, u.username, u.msg_count, u.first_seen
             ORDER BY u.msg_count DESC LIMIT 5
         """)
         result = []
@@ -361,16 +331,16 @@ def engagement_leaderboard():
 @api.route("/api/daterange")
 def daterange():
     try:
-        start = request.args.get("start")
-        end   = request.args.get("end")
+        start     = request.args.get("start")
+        end       = request.args.get("end")
         if not start or not end:
             return jsonify({"error": "start and end required"}), 400
-        total      = fetchone("SELECT COUNT(*) as cnt FROM messages WHERE timestamp >= %s AND timestamp <= %s", (start, end))
-        users      = fetchone("SELECT COUNT(DISTINCT user_id) as cnt FROM messages WHERE timestamp >= %s AND timestamp <= %s", (start, end))
-        daily      = fetchall("SELECT DATE(timestamp) as day, COUNT(*) as cnt FROM messages WHERE timestamp >= %s AND timestamp <= %s GROUP BY day ORDER BY day", (start, end))
-        top_users  = fetchall("SELECT username, COUNT(*) as cnt FROM messages WHERE timestamp >= %s AND timestamp <= %s GROUP BY username ORDER BY cnt DESC LIMIT 10", (start, end))
-        top_chans  = fetchall("SELECT channel_name, COUNT(*) as cnt FROM messages WHERE timestamp >= %s AND timestamp <= %s GROUP BY channel_name ORDER BY cnt DESC LIMIT 8", (start, end))
-        peak_hour  = fetchone("SELECT hour, COUNT(*) as cnt FROM messages WHERE timestamp >= %s AND timestamp <= %s GROUP BY hour ORDER BY cnt DESC LIMIT 1", (start, end))
+        total     = fetchone("SELECT COUNT(*) as cnt FROM messages WHERE timestamp >= %s AND timestamp <= %s", (start, end))
+        users     = fetchone("SELECT COUNT(DISTINCT user_id) as cnt FROM messages WHERE timestamp >= %s AND timestamp <= %s", (start, end))
+        daily     = fetchall("SELECT DATE(timestamp) as day, COUNT(*) as cnt FROM messages WHERE timestamp >= %s AND timestamp <= %s GROUP BY day ORDER BY day", (start, end))
+        top_users = fetchall("SELECT username, COUNT(*) as cnt FROM messages WHERE timestamp >= %s AND timestamp <= %s GROUP BY username ORDER BY cnt DESC LIMIT 10", (start, end))
+        top_chans = fetchall("SELECT channel_name, COUNT(*) as cnt FROM messages WHERE timestamp >= %s AND timestamp <= %s GROUP BY channel_name ORDER BY cnt DESC LIMIT 8", (start, end))
+        peak_hour = fetchone("SELECT hour, COUNT(*) as cnt FROM messages WHERE timestamp >= %s AND timestamp <= %s GROUP BY hour ORDER BY cnt DESC LIMIT 1", (start, end))
         return jsonify({
             "total_messages": total["cnt"] if total else 0,
             "unique_users":   users["cnt"] if users else 0,
@@ -383,21 +353,25 @@ def daterange():
         return jsonify({"error": str(e)}), 500
 
 # ─── FOURTHWALL API ROUTES ────────────────────────────────────────────────────
-
 @api.route("/api/fw/overview")
 def fw_overview():
     try:
-        total_orders   = fetchone("SELECT COUNT(*) as c FROM orders WHERE event_type = 'order.placed'")["c"]
-        total_revenue  = fetchone("SELECT COALESCE(SUM(total_amount),0) as r FROM orders WHERE event_type = 'order.placed'")["r"]
-        total_gifts    = fetchone("SELECT COUNT(*) as c FROM orders WHERE event_type = 'gift.purchased'")["c"]
-        total_subs     = fetchone("SELECT COUNT(*) as c FROM orders WHERE event_type = 'subscription.purchased'")["c"]
-        last_order     = fetchone("SELECT buyer_name, product_name, total_amount, timestamp FROM orders ORDER BY timestamp DESC LIMIT 1")
+        total_orders  = fetchone("SELECT COUNT(*) as c FROM orders WHERE event_type = 'order.placed'")["c"]
+        total_revenue = fetchone("SELECT COALESCE(SUM(total_amount),0) as r FROM orders WHERE event_type = 'order.placed'")["r"]
+        total_gifts   = fetchone("SELECT COUNT(*) as c FROM orders WHERE event_type = 'gift.purchased'")["c"]
+        total_subs    = fetchone("SELECT COUNT(*) as c FROM orders WHERE event_type = 'subscription.purchased'")["c"]
+        last_order    = fetchone("SELECT buyer_name, product_name, total_amount, timestamp FROM orders ORDER BY timestamp DESC LIMIT 1")
         return jsonify({
-            "total_orders":   total_orders,
-            "total_revenue":  float(total_revenue),
-            "total_gifts":    total_gifts,
-            "total_subs":     total_subs,
-            "last_order":     dict(last_order) if last_order else None,
+            "total_orders":  total_orders,
+            "total_revenue": float(total_revenue),
+            "total_gifts":   total_gifts,
+            "total_subs":    total_subs,
+            "last_order":    {
+                "buyer_name":   last_order["buyer_name"],
+                "product_name": last_order["product_name"],
+                "total_amount": float(last_order["total_amount"]) if last_order["total_amount"] else 0,
+                "timestamp":    last_order["timestamp"].isoformat(),
+            } if last_order else None,
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -432,14 +406,11 @@ def fw_products():
 @api.route("/api/fw/orders")
 def fw_orders():
     try:
-        rows = fetchall("""
-            SELECT order_id, event_type, buyer_name, product_name, total_amount, status, timestamp
-            FROM orders ORDER BY timestamp DESC LIMIT 20
-        """)
+        rows = fetchall("SELECT order_id, event_type, buyer_name, product_name, total_amount, status, timestamp FROM orders ORDER BY timestamp DESC LIMIT 20")
         result = []
         for r in rows:
             d = dict(r)
-            d["timestamp"] = r["timestamp"].isoformat()
+            d["timestamp"]    = r["timestamp"].isoformat()
             d["total_amount"] = float(r["total_amount"]) if r["total_amount"] else 0
             result.append(d)
         return jsonify(result)
@@ -447,30 +418,25 @@ def fw_orders():
         return jsonify({"error": str(e)}), 500
 
 # ─── FOURTHWALL WEBHOOK ───────────────────────────────────────────────────────
-
 @api.route("/webhook/fourthwall", methods=["POST"])
 def fourthwall_webhook():
     body = request.get_data()
-    print(f"✅ FW Webhook received! Event: {request.get_json(silent=True)}")
+    data = request.get_json(silent=True) or {}
+    print(f"✅ FW Webhook received! Type: {data.get('type','unknown')}")
 
-    # Verify signature if secret is set
-   if FW_SECRET:
-    sig      = request.headers.get("X-Fourthwall-Signature", "")
-    expected = "sha256=" + hmac.new(FW_SECRET.encode(), body, hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(sig, expected):
-        print(f"⚠️ FW Signature mismatch. Got: {sig} Expected: {expected}")
-        # Temporarily allow through for testing
-        # return jsonify({"error": "Invalid signature"}), 401
+    # Verify signature — log mismatch but allow through for now
+    if FW_SECRET:
+        sig      = request.headers.get("X-Fourthwall-Signature", "")
+        expected = "sha256=" + hmac.new(FW_SECRET.encode(), body, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(sig, expected):
+            print(f"⚠️ FW Signature mismatch. Got: {sig} | Expected: {expected}")
 
-    data       = request.get_json(silent=True) or {}
-    event_type = data.get("type", "")
-    payload    = data.get("data", {})
-
-    # Parse common fields
+    event_type   = data.get("type", "")
+    payload      = data.get("data", {})
     buyer_name   = payload.get("buyerName") or payload.get("email", "Someone")
     total_raw    = payload.get("totalAmount") or payload.get("amount") or 0
     try:
-        total = float(str(total_raw).replace("$","").replace(",",""))
+        total = float(str(total_raw).replace("$", "").replace(",", ""))
     except:
         total = 0.0
     total_fmt    = payload.get("totalFormatted") or f"${total:.2f}"
@@ -485,16 +451,15 @@ def fourthwall_webhook():
     try:
         execute("""
             INSERT INTO orders (order_id, event_type, buyer_name, buyer_email, product_name, total_amount, status, raw)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (order_id) DO NOTHING
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (order_id) DO NOTHING
         """, (order_id, event_type, buyer_name,
-              payload.get("email",""), product_name,
-              total, status,
-              psycopg2.extras.Json(payload)))
+              payload.get("email", ""), product_name,
+              total, status, psycopg2.extras.Json(payload)))
+        print(f"✅ FW Order saved: {order_id}")
     except Exception as e:
-        print(f"FW DB error: {e}")
+        print(f"⚠️ FW DB error: {e}")
 
-    # Send Discord message
+    # Send Discord alert
     import asyncio
     if event_type == "order.placed":
         msg = (
@@ -504,7 +469,6 @@ def fourthwall_webhook():
             f"Thanks for supporting the podcast! 🎙️"
         )
         asyncio.run_coroutine_threadsafe(_send_fw_alert(msg, FW_ORDER_CHANNEL), bot.loop)
-
     elif event_type == "gift.purchased":
         msg = (
             f"🎁 **Gift Purchase!**\n"
@@ -513,7 +477,6 @@ def fourthwall_webhook():
             f"What a legend! 🙌"
         )
         asyncio.run_coroutine_threadsafe(_send_fw_alert(msg, FW_GIFT_CHANNEL or FW_ORDER_CHANNEL), bot.loop)
-
     elif event_type == "subscription.purchased":
         msg = (
             f"🔔 **New Subscription!**\n"
@@ -522,18 +485,21 @@ def fourthwall_webhook():
             f"Welcome to the inner circle! 🕵️"
         )
         asyncio.run_coroutine_threadsafe(_send_fw_alert(msg, FW_GIFT_CHANNEL or FW_ORDER_CHANNEL), bot.loop)
+    else:
+        print(f"ℹ️ FW unhandled event type: {event_type}")
 
     return jsonify({"ok": True}), 200
 
 async def _send_fw_alert(msg, channel_id):
     if not channel_id:
-        print("⚠️  FW: No channel ID set")
+        print("⚠️ FW: No channel ID configured")
         return
     channel = bot.get_channel(channel_id)
     if channel:
         await channel.send(msg)
+        print(f"✅ FW alert sent to channel {channel_id}")
     else:
-        print(f"⚠️  FW: Channel {channel_id} not found")
+        print(f"⚠️ FW: Could not find channel {channel_id}")
 
 # ─── DISCORD BOT ─────────────────────────────────────────────────────────────
 intents = discord.Intents.default()
@@ -548,6 +514,8 @@ async def on_ready():
     init_db()
     print(f"✅  Logged in as {bot.user}")
     print(f"📊  Dashboard → http://localhost:{FLASK_PORT}")
+    print(f"📣  FW Order Channel: {FW_ORDER_CHANNEL}")
+    print(f"🎁  FW Gift Channel:  {FW_GIFT_CHANNEL}")
 
 @bot.event
 async def on_message(message):
@@ -589,13 +557,15 @@ async def backfill(ctx, days: int = 30):
     total_msgs = total_chans = skipped = 0
     for channel in ctx.guild.text_channels:
         if not channel.permissions_for(ctx.guild.me).read_message_history:
-            skipped += 1; continue
+            skipped += 1
+            continue
         chan_count = 0
         try:
             async for message in channel.history(limit=None, after=cutoff, oldest_first=True):
-                if message.author.bot: continue
-                ts  = message.created_at.replace(tzinfo=None)
-                av  = str(message.author.display_avatar.url) if message.author.display_avatar else ""
+                if message.author.bot:
+                    continue
+                ts = message.created_at.replace(tzinfo=None)
+                av = str(message.author.display_avatar.url) if message.author.display_avatar else ""
                 try:
                     execute("""
                         INSERT INTO messages (user_id, username, channel_id, channel_name, guild_id, hour, day_of_week, timestamp)
@@ -606,18 +576,23 @@ async def backfill(ctx, days: int = 30):
                         INSERT INTO user_stats (user_id, username, guild_id, msg_count, last_seen, first_seen, avatar_url)
                         VALUES (%s,%s,%s,1,%s,%s,%s)
                         ON CONFLICT (user_id) DO UPDATE SET
-                            username=EXCLUDED.username, msg_count=user_stats.msg_count+1,
+                            username=EXCLUDED.username,
+                            msg_count=user_stats.msg_count+1,
                             last_seen=GREATEST(user_stats.last_seen,EXCLUDED.last_seen),
                             first_seen=LEAST(user_stats.first_seen,EXCLUDED.first_seen),
                             avatar_url=EXCLUDED.avatar_url
                     """, (str(message.author.id), str(message.author),
                           str(ctx.guild.id), ts, ts, av))
-                    chan_count += 1; total_msgs += 1
+                    chan_count += 1
+                    total_msgs += 1
                 except Exception as e:
                     print(f"Backfill DB error: {e}")
-            if chan_count > 0: total_chans += 1
+            if chan_count > 0:
+                total_chans += 1
         except discord.Forbidden:
             skipped += 1
+        except Exception as e:
+            print(f"Backfill channel error ({channel.name}): {e}")
     await status_msg.edit(content=(
         f"✅ **Backfill complete!**\n"
         f"📨 **{total_msgs:,}** messages · 📣 **{total_chans}** channels · 🔒 **{skipped}** skipped\n"
