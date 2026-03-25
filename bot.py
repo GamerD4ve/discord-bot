@@ -1076,6 +1076,37 @@ async def giveaway_end(ctx, giveaway_id: int = None):
     await ctx.send(f"✅ Giveaway **#{giveaway_id}** ended and winner(s) selected.")
 
 
+# ─── /message SLASH COMMAND ──────────────────────────────────────────────────
+
+@bot.tree.command(name="message", description="Send a message as the bot to a specified channel.")
+@discord.app_commands.describe(
+    channel="The channel to send the message in",
+    text="The message to send",
+)
+async def slash_message(interaction: discord.Interaction, channel: discord.TextChannel, text: str):
+    # Check manager role or admin
+    if not member_can_manage(interaction.user):
+        await interaction.response.send_message(
+            "❌ You don't have permission to use this command.", ephemeral=True
+        )
+        return
+
+    try:
+        await channel.send(text)
+        await interaction.response.send_message(
+            f"✅ Message sent to {channel.mention}.", ephemeral=True
+        )
+    except discord.Forbidden:
+        await interaction.response.send_message(
+            f"❌ I don't have permission to send messages in {channel.mention}.", ephemeral=True
+        )
+    except Exception as e:
+        await interaction.response.send_message(
+            f"❌ Failed to send message: {e}", ephemeral=True
+        )
+
+# ─────────────────────────────────────────────────────────────────────────────
+
 @giveaway_group.command(name="entries")
 @check_giveaway_manager()
 async def giveaway_entries_cmd(ctx, giveaway_id: int = None):
@@ -1132,6 +1163,13 @@ async def on_ready():
     print(f"🎁  FW Gift Channel:  {FW_GIFT_CHANNEL}")
     print(f"🎉  Giveaway manager role IDs: {GIVEAWAY_MANAGER_ROLE_IDS}")
     print(f"🎟️  Giveaway entry role ID:    {GIVEAWAY_ENTRY_ROLE_ID}")
+
+    # Sync slash commands
+    try:
+        synced = await bot.tree.sync()
+        print(f"⚡  Synced {len(synced)} slash command(s)")
+    except Exception as e:
+        print(f"⚠️  Could not sync slash commands: {e}")
 
     # Restore active giveaways — re-register buttons & restart countdown tasks
     try:
