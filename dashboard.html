@@ -17,6 +17,9 @@
   --gold:   #d4a017;
   --gold2:  #f0c040;
   --green:  #2ecc71;
+  --blue:   #3498db;
+  --purple: #9b59b6;
+  --teal:   #1abc9c;
   --text:   #ffffff;
   --muted:  #8b949e;
   --border: #1e2530;
@@ -33,7 +36,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
 }
 body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 3px);pointer-events:none;z-index:1000}
 
-/* ── Header ── */
+/* ── Nav ── */
 .hdr{background:linear-gradient(180deg,rgba(192,57,43,.12) 0%,transparent 100%);
   border-bottom:1px solid rgba(192,57,43,.3);padding:0 36px;
   display:flex;align-items:center;gap:20px;position:sticky;top:0;z-index:100;
@@ -55,52 +58,69 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .btn:hover{background:rgba(192,57,43,.15);border-color:var(--red2);box-shadow:0 0 12px var(--glow)}
 #last-refresh{font-size:.7rem;color:var(--muted)}
 
+/* ── Tab Nav ── */
+.tab-nav{display:flex;gap:4px;padding:0 36px;background:rgba(13,17,23,.9);
+  border-bottom:1px solid var(--border);backdrop-filter:blur(12px);
+  position:sticky;top:70px;z-index:99;overflow-x:auto}
+.tab-nav::-webkit-scrollbar{display:none}
+.tab-btn{padding:12px 18px;font-size:.72rem;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;
+  transition:all .2s;white-space:nowrap;background:none;border-top:none;border-left:none;border-right:none}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--red2);border-bottom-color:var(--red2)}
+
 /* ── Layout ── */
 .wrap{padding:28px 36px;max-width:1440px;margin:0 auto}
+.tab-panel{display:none}.tab-panel.active{display:block}
 .sec-title{font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:.15em;
   color:var(--red2);margin-bottom:16px;display:flex;align-items:center;gap:10px}
 .sec-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(192,57,43,.4),transparent)}
 
-/* ── Cards with glow ── */
-.card{
-  background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:22px;
+/* ── Cards ── */
+.card{background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:22px;
   box-shadow:0 0 18px rgba(192,57,43,.07), 0 4px 24px rgba(0,0,0,.4);
-  transition:box-shadow .3s, transform .2s;
-}
-.card:hover{
-  box-shadow:0 0 28px rgba(192,57,43,.14), 0 6px 30px rgba(0,0,0,.5);
-  transform:translateY(-1px);
-}
+  transition:box-shadow .3s,transform .2s}
+.card:hover{box-shadow:0 0 28px rgba(192,57,43,.14), 0 6px 30px rgba(0,0,0,.5);transform:translateY(-1px)}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:600}
 
 /* ── Stat Cards ── */
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:22px}
-.sc{
-  background:var(--surf);border:1px solid var(--border);border-radius:10px;
+.sc{background:var(--surf);border:1px solid var(--border);border-radius:10px;
   padding:20px 22px;position:relative;overflow:hidden;transition:transform .2s,box-shadow .3s;
-  box-shadow:0 0 18px rgba(192,57,43,.07), 0 4px 24px rgba(0,0,0,.4);
-}
+  box-shadow:0 0 18px rgba(192,57,43,.07), 0 4px 24px rgba(0,0,0,.4)}
 .sc:hover{transform:translateY(-2px)}
 .sc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
 .sc.red::before{background:linear-gradient(90deg,var(--red),transparent)}
 .sc.gold::before{background:linear-gradient(90deg,var(--gold),transparent)}
 .sc.green::before{background:linear-gradient(90deg,var(--green),transparent)}
+.sc.blue::before{background:linear-gradient(90deg,var(--blue),transparent)}
+.sc.purple::before{background:linear-gradient(90deg,var(--purple),transparent)}
+.sc.teal::before{background:linear-gradient(90deg,var(--teal),transparent)}
 .sc.sc-dim::before{background:linear-gradient(90deg,#3a4a5a,transparent)}
 .sc.red{box-shadow:0 0 22px rgba(192,57,43,.15), 0 4px 24px rgba(0,0,0,.4)}
 .sc.gold{box-shadow:0 0 22px rgba(212,160,23,.12), 0 4px 24px rgba(0,0,0,.4)}
 .sc.green{box-shadow:0 0 22px rgba(46,204,113,.1), 0 4px 24px rgba(0,0,0,.4)}
+.sc.blue{box-shadow:0 0 22px rgba(52,152,219,.1), 0 4px 24px rgba(0,0,0,.4)}
+.sc.purple{box-shadow:0 0 22px rgba(155,89,182,.1), 0 4px 24px rgba(0,0,0,.4)}
+.sc.teal{box-shadow:0 0 22px rgba(26,188,156,.1), 0 4px 24px rgba(0,0,0,.4)}
 .sc .lbl{color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px;font-weight:600}
 .sc .val{font-family:'Bebas Neue',sans-serif;font-size:2.6rem;line-height:1;letter-spacing:.02em}
 .sc.red .val{color:var(--red2);text-shadow:0 0 30px var(--glow)}
 .sc.gold .val{color:var(--gold2);text-shadow:0 0 30px var(--glow2)}
 .sc.green .val{color:var(--green)}
+.sc.blue .val{color:var(--blue)}
+.sc.purple .val{color:var(--purple)}
+.sc.teal .val{color:var(--teal)}
 .sc.sc-dim .val{color:var(--text)}
 .sc .sub{color:var(--muted);font-size:.74rem;margin-top:5px}
 .sc .corner{position:absolute;bottom:14px;right:16px;font-size:1.6rem;opacity:.08}
 
-/* ── Grid layouts ── */
+/* ── Grid ── */
 .row2{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}
 .row2eq{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
-.row3{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.row3-21{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}
 .row4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-bottom:14px}
 
 /* ── Heatmap ── */
@@ -129,9 +149,15 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .badge{display:inline-block;padding:2px 9px;border-radius:4px;font-size:.67rem;font-weight:700;letter-spacing:.05em}
 .badge-red{background:rgba(192,57,43,.2);color:var(--red2);border:1px solid rgba(192,57,43,.3)}
 .badge-gold{background:rgba(212,160,23,.15);color:var(--gold2);border:1px solid rgba(212,160,23,.25)}
+.badge-green{background:rgba(46,204,113,.15);color:var(--green);border:1px solid rgba(46,204,113,.25)}
+.badge-blue{background:rgba(52,152,219,.15);color:var(--blue);border:1px solid rgba(52,152,219,.25)}
+.badge-purple{background:rgba(155,89,182,.15);color:var(--purple);border:1px solid rgba(155,89,182,.25)}
 .badge-dim{background:rgba(255,255,255,.05);color:var(--muted);border:1px solid rgba(255,255,255,.08)}
 .bar-wrap{height:4px;border-radius:2px;background:var(--surf3);min-width:60px;overflow:hidden}
 .bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--red),var(--gold))}
+.bar-fill-blue{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--blue),var(--teal))}
+.bar-fill-green{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--green),var(--teal))}
+.bar-fill-purple{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--purple),var(--blue))}
 .ago{color:var(--muted);font-size:.76rem}
 .eng{display:inline-flex;align-items:center;justify-content:center;
   width:34px;height:34px;border-radius:50%;font-size:.72rem;font-weight:700;border:2px solid var(--surf3)}
@@ -153,6 +179,8 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .order-product{color:var(--muted);font-size:.74rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .order-amount{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:var(--green);flex-shrink:0}
 .order-time{color:var(--muted);font-size:.68rem;flex-shrink:0}
+
+/* ── Date Range ── */
 .dr-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
 .dr-bar label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .dr-input{background:var(--surf2);border:1px solid var(--border);color:var(--text);
@@ -160,18 +188,95 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   outline:none;transition:border .2s}
 .dr-input:focus{border-color:rgba(192,57,43,.6)}
 .dr-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
-.dr-stat{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;
-  box-shadow:0 0 14px rgba(192,57,43,.06)}
+.dr-stat{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:14px 16px}
 .dr-stat .lbl{font-size:.67rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
 .dr-stat .val{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--red2)}
-
-/* ── Date Range ── */
 .pill-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .pill{background:var(--surf2);border:1px solid var(--border);color:var(--muted);
   padding:4px 12px;border-radius:20px;font-size:.72rem;cursor:pointer;transition:all .2s;font-weight:500}
 .pill:hover,.pill.active{background:rgba(192,57,43,.15);border-color:rgba(192,57,43,.5);color:var(--red2)}
 
-@media(max-width:900px){.row2,.row2eq,.row3,.row4{grid-template-columns:1fr}.wrap{padding:16px}}
+/* ── Poll Cards ── */
+.poll-card{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:18px;margin-bottom:12px;transition:all .2s}
+.poll-card:hover{border-color:rgba(52,152,219,.4);box-shadow:0 0 16px rgba(52,152,219,.08)}
+.poll-question{font-weight:600;font-size:.94rem;margin-bottom:14px;line-height:1.4}
+.poll-option{margin-bottom:8px}
+.poll-option-label{display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:4px}
+.poll-option-name{color:var(--text)}
+.poll-option-pct{color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:.9rem}
+.poll-bar-wrap{height:6px;border-radius:3px;background:var(--surf3);overflow:hidden}
+.poll-bar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--blue),var(--teal));transition:width .8s ease}
+.poll-bar-fill.winner{background:linear-gradient(90deg,var(--gold),var(--red2))}
+.poll-meta{display:flex;align-items:center;gap:14px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.poll-meta span{font-size:.7rem;color:var(--muted)}
+.poll-status{padding:2px 10px;border-radius:12px;font-size:.65rem;font-weight:700;letter-spacing:.06em}
+.poll-status.live{background:rgba(46,204,113,.15);color:var(--green);border:1px solid rgba(46,204,113,.3)}
+.poll-status.closed{background:rgba(139,148,158,.1);color:var(--muted);border:1px solid rgba(139,148,158,.2)}
+
+/* ── COTW Cards ── */
+.cotw-card{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:18px;margin-bottom:10px;transition:all .2s}
+.cotw-card:hover{border-color:rgba(212,160,23,.4)}
+.cotw-card.winner{border-color:rgba(212,160,23,.5);box-shadow:0 0 20px rgba(212,160,23,.08)}
+.cotw-rank{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--muted);line-height:1;margin-bottom:4px}
+.cotw-rank.gold{color:var(--gold2);text-shadow:0 0 12px var(--glow2)}
+.cotw-theory{font-size:.9rem;line-height:1.5;color:var(--text);font-style:italic;margin-bottom:10px}
+.cotw-submitter{font-size:.75rem;color:var(--muted)}
+
+/* ── Cipher Cards ── */
+.cipher-card{background:var(--surf2);border:1px solid rgba(26,188,156,.2);border-radius:8px;padding:18px;margin-bottom:10px}
+.cipher-encoded{font-family:'Courier New',monospace;font-size:.88rem;color:var(--teal);
+  background:rgba(26,188,156,.06);border:1px solid rgba(26,188,156,.15);
+  border-radius:6px;padding:12px;margin:10px 0;letter-spacing:.06em;word-break:break-all}
+.cipher-title{font-weight:700;font-size:.88rem;color:var(--teal);margin-bottom:6px}
+.cipher-solution{font-family:'Courier New',monospace;font-size:.82rem;
+  color:var(--gold2);background:rgba(212,160,23,.06);
+  border:1px solid rgba(212,160,23,.2);border-radius:4px;padding:8px 12px;margin-top:8px}
+
+/* ── Rabbit Hole Cards ── */
+.rh-card{background:var(--surf2);border:1px solid rgba(155,89,182,.2);border-radius:8px;padding:18px;margin-bottom:10px;transition:all .2s}
+.rh-card:hover{border-color:rgba(155,89,182,.4)}
+.rh-title{font-weight:700;font-size:.94rem;color:var(--purple);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.rh-summary{font-size:.82rem;line-height:1.6;color:rgba(255,255,255,.8)}
+.rh-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.rh-tag{padding:2px 8px;border-radius:10px;font-size:.65rem;font-weight:600;
+  background:rgba(155,89,182,.12);color:var(--purple);border:1px solid rgba(155,89,182,.2)}
+
+/* ── Phase indicator ── */
+.phase-strip{display:flex;gap:0;margin-bottom:22px;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+.phase-step{flex:1;padding:14px 16px;text-align:center;position:relative;background:var(--surf2)}
+.phase-step.active{background:rgba(212,160,23,.1);border-bottom:2px solid var(--gold)}
+.phase-step.done{background:rgba(46,204,113,.06);border-bottom:2px solid var(--green)}
+.phase-step .ps-icon{font-size:1.3rem;margin-bottom:4px}
+.phase-step .ps-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600}
+.phase-step.active .ps-label{color:var(--gold2)}
+.phase-step.done .ps-label{color:var(--green)}
+
+/* ── Empty state ── */
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty .empty-icon{font-size:2.5rem;margin-bottom:12px;opacity:.4}
+.empty .empty-text{font-size:.84rem}
+
+/* ── Scrollable containers ── */
+.scroll-y{overflow-y:auto;max-height:520px;padding-right:4px}
+.scroll-y::-webkit-scrollbar{width:3px}
+.scroll-y::-webkit-scrollbar-track{background:transparent}
+.scroll-y::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ── Episode card ── */
+.ep-card{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);align-items:flex-start}
+.ep-card:last-child{border-bottom:none}
+.ep-thumb{width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--surf3)}
+.ep-thumb-placeholder{width:56px;height:56px;border-radius:8px;background:var(--surf3);
+  display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0}
+.ep-info{flex:1;min-width:0}
+.ep-title{font-weight:600;font-size:.88rem;margin-bottom:4px;line-height:1.3;
+  overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.ep-meta{display:flex;gap:10px;flex-wrap:wrap}
+.ep-meta span{font-size:.7rem;color:var(--muted)}
+.ep-new{padding:2px 8px;border-radius:10px;font-size:.62rem;font-weight:700;letter-spacing:.06em;
+  background:rgba(30,215,96,.15);color:#1ed760;border:1px solid rgba(30,215,96,.3)}
+
+@media(max-width:900px){.row2,.row2eq,.row3,.row3-21,.row4{grid-template-columns:1fr}.wrap{padding:16px}.tab-nav{padding:0 16px}}
 </style>
 </head>
 <body>
@@ -189,9 +294,22 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   </div>
 </div>
 
+<!-- Tab Navigation -->
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('community')">📡 Community</button>
+  <button class="tab-btn" onclick="switchTab('polls')">📊 Polls</button>
+  <button class="tab-btn" onclick="switchTab('cotw')">🕵️ Conspiracy of the Week</button>
+  <button class="tab-btn" onclick="switchTab('ciphers')">🔐 Ciphers</button>
+  <button class="tab-btn" onclick="switchTab('rabbitholes')">🕳️ Rabbit Holes</button>
+  <button class="tab-btn" onclick="switchTab('podcast')">🎙️ Podcast</button>
+  <button class="tab-btn" onclick="switchTab('storefront')">🛒 Storefront</button>
+</div>
+
 <div class="wrap">
 
-  <!-- KPI Cards -->
+<!-- ═══════════════════════════════════════════════ COMMUNITY TAB -->
+<div id="tab-community" class="tab-panel active">
+
   <div class="stats">
     <div class="sc red"><div class="lbl">Total Messages</div><div class="val" id="s-msgs">—</div><div class="sub">across all channels</div><div class="corner">📡</div></div>
     <div class="sc gold"><div class="lbl">Active Members</div><div class="val" id="s-users">—</div><div class="sub">tracked individuals</div><div class="corner">👥</div></div>
@@ -200,21 +318,18 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <div class="sc sc-dim"><div class="lbl">Peak Day</div><div class="val" id="s-day" style="font-size:1.4rem;padding-top:6px">—</div><div class="sub" id="s-day-sub"></div><div class="corner">🔥</div></div>
   </div>
 
-  <!-- Growth -->
   <div class="sec-title">COMMUNITY GROWTH</div>
   <div class="row2" style="margin-bottom:22px">
     <div class="card"><canvas id="cDaily" height="110"></canvas></div>
     <div class="card"><canvas id="cChannels" height="240"></canvas></div>
   </div>
 
-  <!-- Patterns -->
   <div class="sec-title">ENGAGEMENT PATTERNS</div>
   <div class="row2eq" style="margin-bottom:22px">
     <div class="card"><canvas id="cDow" height="160"></canvas></div>
     <div class="card"><canvas id="cNewMembers" height="160"></canvas></div>
   </div>
 
-  <!-- Heatmap -->
   <div class="sec-title">HOURLY ACTIVITY — WHEN IS THE COMMUNITY ONLINE?</div>
   <div class="card" style="margin-bottom:22px">
     <div class="hm-grid" id="hmGrid"></div>
@@ -228,7 +343,6 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     </div>
   </div>
 
-  <!-- Period Comparison -->
   <div class="sec-title">PERIOD COMPARISON — LAST 30 DAYS VS PREVIOUS 30 DAYS</div>
   <div class="row2eq" style="margin-bottom:22px">
     <div class="card" style="display:flex;gap:20px;align-items:center;justify-content:center">
@@ -250,31 +364,55 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <div class="card"><canvas id="cCompare" height="160"></canvas></div>
   </div>
 
-  <!-- Member Deep Dives -->
   <div class="sec-title">MEMBER INTELLIGENCE</div>
   <div class="row4" style="margin-bottom:22px">
-    <!-- Loyalty Tiers -->
-    <div class="card">
-      <canvas id="cLoyalty" height="220"></canvas>
-    </div>
-    <!-- Radar -->
-    <div class="card" style="grid-column:span 2">
-      <canvas id="cRadar" height="220"></canvas>
-    </div>
-    <!-- Engagement Leaderboard -->
+    <div class="card"><canvas id="cLoyalty" height="220"></canvas></div>
+    <div class="card" style="grid-column:span 2"><canvas id="cRadar" height="220"></canvas></div>
     <div class="card" style="overflow-y:auto;max-height:600px">
       <div style="color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px">🎯 Engagement Leaderboard</div>
       <div id="engList"></div>
     </div>
   </div>
 
-  <!-- Activity Timeline -->
   <div class="sec-title">30-DAY ACTIVITY TIMELINE — TOP MEMBERS</div>
-  <div class="card" style="margin-bottom:22px">
-    <canvas id="cTimeline" height="220"></canvas>
+  <div class="card" style="margin-bottom:22px"><canvas id="cTimeline" height="220"></canvas></div>
+
+  <!-- Jorge Mention Tracker -->
+  <div class="sec-title">🕵️ JORGE WATCH — HOW MANY TIMES HAS JORGE BEEN TAGGED?</div>
+  <div class="row2eq" style="margin-bottom:22px">
+    <!-- Big counter card -->
+    <div class="card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;padding:32px;position:relative;overflow:hidden">
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 100%,rgba(192,57,43,.08),transparent 70%);pointer-events:none"></div>
+      <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.18em;color:var(--muted);font-weight:600">Times Tagged Since Last Post</div>
+      <div id="jorge-count" style="font-family:'Bebas Neue',sans-serif;font-size:6rem;line-height:1;color:var(--red2);text-shadow:0 0 40px var(--glow)">—</div>
+      <div id="jorge-since" style="font-size:.78rem;color:var(--muted)">Loading...</div>
+      <div id="jorge-channel" style="font-size:.72rem;color:var(--muted)"></div>
+    </div>
+    <!-- Stats + recent taggers -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <!-- Sub-stats -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="sc sc-dim" style="padding:16px 18px">
+          <div class="lbl">All-Time Tags</div>
+          <div class="val" id="jorge-alltime">—</div>
+          <div class="sub">since monitoring</div>
+        </div>
+        <div class="sc red" style="padding:16px 18px">
+          <div class="lbl">Top Tagger</div>
+          <div class="val" id="jorge-top-tagger" style="font-size:1.1rem;padding-top:6px">—</div>
+          <div class="sub" id="jorge-top-count">this period</div>
+        </div>
+      </div>
+      <!-- Recent tagger feed -->
+      <div class="card" style="flex:1;padding:16px">
+        <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:12px">🔔 Recent Tags</div>
+        <div id="jorge-recent">
+          <div class="empty" style="padding:20px 0"><div class="empty-text">No tags recorded yet</div></div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- Operative Roster -->
   <div class="sec-title">OPERATIVE ROSTER — MOST LOYAL MEMBERS</div>
   <div style="margin-bottom:22px">
     <div class="card">
@@ -288,36 +426,6 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     </div>
   </div>
 
-  <!-- Fourthwall Storefront -->
-  <div class="sec-title">🛒 STOREFRONT INTELLIGENCE</div>
-  <div class="stats" style="margin-bottom:14px">
-    <div class="sc gold"><div class="lbl">Total Revenue</div><div class="val" id="fw-revenue">—</div><div class="sub">all time</div><div class="corner">💰</div></div>
-    <div class="sc red"><div class="lbl">Total Orders</div><div class="val" id="fw-orders">—</div><div class="sub">orders placed</div><div class="corner">📦</div></div>
-    <div class="sc sc-dim"><div class="lbl">Gift Purchases</div><div class="val" id="fw-gifts">—</div><div class="sub">gifted items</div><div class="corner">🎁</div></div>
-    <div class="sc sc-dim"><div class="lbl">Subscriptions</div><div class="val" id="fw-subs">—</div><div class="sub">active subs</div><div class="corner">🔔</div></div>
-  </div>
-  <div class="row3" style="margin-bottom:14px">
-    <div class="card"><canvas id="cFwRevenue" height="160"></canvas></div>
-    <div class="card"><canvas id="cFwProducts" height="160"></canvas></div>
-  </div>
-  <div class="row2eq" style="margin-bottom:22px">
-    <!-- Recent orders feed -->
-    <div class="card">
-      <div style="color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px">📋 Recent Orders</div>
-      <div id="fwOrderFeed"></div>
-    </div>
-    <!-- Last order highlight -->
-    <div class="card" style="display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:10px">
-      <div style="font-size:2.5rem">🛒</div>
-      <div style="color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.12em">Most Recent Order</div>
-      <div id="fw-last-name" style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--gold2)">—</div>
-      <div id="fw-last-product" style="color:var(--text);font-size:.9rem">—</div>
-      <div id="fw-last-amount" style="font-family:'Bebas Neue',sans-serif;font-size:2.4rem;color:var(--green)">—</div>
-      <div id="fw-last-time" style="color:var(--muted);font-size:.75rem">—</div>
-    </div>
-  </div>
-
-  <!-- Date Range Explorer -->
   <div class="sec-title">📅 DATE RANGE EXPLORER</div>
   <div class="card" style="margin-bottom:22px">
     <div class="pill-bar">
@@ -327,10 +435,8 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <span class="pill" onclick="setRange(90)">Last 90 days</span>
     </div>
     <div class="dr-bar">
-      <label>From</label>
-      <input type="date" id="drStart" class="dr-input"/>
-      <label>To</label>
-      <input type="date" id="drEnd" class="dr-input"/>
+      <label>From</label><input type="date" id="drStart" class="dr-input"/>
+      <label>To</label><input type="date" id="drEnd" class="dr-input"/>
       <button class="btn" onclick="loadDateRange()">🔍 Analyse</button>
     </div>
     <div class="dr-stats">
@@ -353,7 +459,163 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     </div>
   </div>
 
-</div>
+</div><!-- /community -->
+
+
+<!-- ═══════════════════════════════════════════════ POLLS TAB -->
+<div id="tab-polls" class="tab-panel">
+
+  <div class="stats" style="margin-bottom:22px">
+    <div class="sc blue"><div class="lbl">Total Polls</div><div class="val" id="poll-total">—</div><div class="sub">all time</div><div class="corner">📊</div></div>
+    <div class="sc green"><div class="lbl">Live Polls</div><div class="val" id="poll-live">—</div><div class="sub">currently open</div><div class="corner">🟢</div></div>
+    <div class="sc sc-dim"><div class="lbl">Closed Polls</div><div class="val" id="poll-closed">—</div><div class="sub">completed</div><div class="corner">🔒</div></div>
+    <div class="sc gold"><div class="lbl">Total Votes Cast</div><div class="val" id="poll-votes">—</div><div class="sub">across all polls</div><div class="corner">🗳️</div></div>
+  </div>
+
+  <div class="row2eq">
+    <!-- Live Polls -->
+    <div>
+      <div class="sec-title">LIVE POLLS</div>
+      <div id="polls-live-list">
+        <div class="empty"><div class="empty-icon">📊</div><div class="empty-text">No live polls right now</div></div>
+      </div>
+    </div>
+    <!-- Closed / Results -->
+    <div>
+      <div class="sec-title">RECENT RESULTS</div>
+      <div id="polls-closed-list" class="scroll-y">
+        <div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No completed polls yet</div></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /polls -->
+
+
+<!-- ═══════════════════════════════════════════════ COTW TAB -->
+<div id="tab-cotw" class="tab-panel">
+
+  <!-- Phase strip -->
+  <div class="phase-strip" id="cotw-phase-strip">
+    <div class="phase-step" id="phase-submission"><div class="ps-icon">📬</div><div class="ps-label">Mon — Submissions</div></div>
+    <div class="phase-step" id="phase-voting"><div class="ps-icon">🗳️</div><div class="ps-label">Fri — Voting</div></div>
+    <div class="phase-step" id="phase-winner"><div class="ps-icon">🏆</div><div class="ps-label">Sun — Winner</div></div>
+  </div>
+
+  <div class="stats" style="margin-bottom:22px">
+    <div class="sc gold"><div class="lbl">Current Week</div><div class="val" id="cotw-week" style="font-size:1.4rem;padding-top:6px">—</div><div class="sub">ISO week</div><div class="corner">📅</div></div>
+    <div class="sc red"><div class="lbl">Submissions</div><div class="val" id="cotw-submissions">—</div><div class="sub">this week</div><div class="corner">📬</div></div>
+    <div class="sc sc-dim"><div class="lbl">Phase</div><div class="val" id="cotw-phase" style="font-size:1.4rem;padding-top:6px">—</div><div class="sub">current stage</div><div class="corner">🔄</div></div>
+    <div class="sc green"><div class="lbl">Total Weeks Run</div><div class="val" id="cotw-weeks-run">—</div><div class="sub">since launch</div><div class="corner">🗓️</div></div>
+  </div>
+
+  <div class="row3-21">
+    <!-- This week's submissions -->
+    <div>
+      <div class="sec-title">THIS WEEK'S SUBMISSIONS</div>
+      <div id="cotw-current-list" class="scroll-y">
+        <div class="empty"><div class="empty-icon">🕵️</div><div class="empty-text">No submissions yet this week</div></div>
+      </div>
+    </div>
+    <!-- Hall of fame / past winners -->
+    <div>
+      <div class="sec-title">HALL OF FAME</div>
+      <div id="cotw-winners-list" class="scroll-y">
+        <div class="empty"><div class="empty-icon">🏆</div><div class="empty-text">No winners yet</div></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /cotw -->
+
+
+<!-- ═══════════════════════════════════════════════ CIPHERS TAB -->
+<div id="tab-ciphers" class="tab-panel">
+
+  <div class="stats" style="margin-bottom:22px">
+    <div class="sc teal"><div class="lbl">Total Ciphers</div><div class="val" id="cipher-total">—</div><div class="sub">in the vault</div><div class="corner">🔐</div></div>
+    <div class="sc sc-dim"><div class="lbl">Posted Today</div><div class="val" id="cipher-today">—</div><div class="sub">daily cipher</div><div class="corner">📅</div></div>
+    <div class="sc gold"><div class="lbl">Types Used</div><div class="val" id="cipher-types">—</div><div class="sub">unique cipher types</div><div class="corner">🔑</div></div>
+  </div>
+
+  <div class="sec-title">THE CIPHER VAULT — ALL AVAILABLE CIPHERS</div>
+  <div id="cipher-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:14px;margin-bottom:22px">
+    <div class="empty" style="grid-column:1/-1"><div class="empty-icon">🔐</div><div class="empty-text">Loading cipher vault...</div></div>
+  </div>
+
+</div><!-- /ciphers -->
+
+
+<!-- ═══════════════════════════════════════════════ RABBIT HOLES TAB -->
+<div id="tab-rabbitholes" class="tab-panel">
+
+  <div class="stats" style="margin-bottom:22px">
+    <div class="sc purple"><div class="lbl">Rabbit Holes</div><div class="val" id="rh-total">—</div><div class="sub">in the archive</div><div class="corner">🕳️</div></div>
+    <div class="sc sc-dim"><div class="lbl">Topics Covered</div><div class="val" id="rh-tags">—</div><div class="sub">unique tags</div><div class="corner">🏷️</div></div>
+    <div class="sc red"><div class="lbl">Confirmed Real</div><div class="val" id="rh-confirmed">—</div><div class="sub">tagged 'confirmed'</div><div class="corner">✅</div></div>
+  </div>
+
+  <!-- Tag filter -->
+  <div class="pill-bar" id="rh-tag-filter" style="margin-bottom:16px"></div>
+
+  <div class="sec-title">THE ARCHIVE</div>
+  <div id="rh-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:14px;margin-bottom:22px">
+    <div class="empty" style="grid-column:1/-1"><div class="empty-icon">🕳️</div><div class="empty-text">Loading the archive...</div></div>
+  </div>
+
+</div><!-- /rabbitholes -->
+
+
+<!-- ═══════════════════════════════════════════════ PODCAST TAB -->
+<div id="tab-podcast" class="tab-panel">
+
+  <div class="stats" style="margin-bottom:22px">
+    <div class="sc green"><div class="lbl">Total Episodes</div><div class="val" id="ep-total">—</div><div class="sub">in the feed</div><div class="corner">🎙️</div></div>
+    <div class="sc gold"><div class="lbl">Latest Episode</div><div class="val" id="ep-latest-num" style="font-size:1.3rem;padding-top:6px">—</div><div class="sub" id="ep-latest-sub">loading...</div><div class="corner">🆕</div></div>
+    <div class="sc sc-dim"><div class="lbl">Last Checked</div><div class="val" id="ep-checked" style="font-size:1.1rem;padding-top:8px">—</div><div class="sub">RSS sync</div><div class="corner">🔄</div></div>
+  </div>
+
+  <div class="sec-title">EPISODE FEED</div>
+  <div id="ep-list" class="card" style="margin-bottom:22px">
+    <div class="empty"><div class="empty-icon">🎙️</div><div class="empty-text">Loading episode feed...</div></div>
+  </div>
+
+</div><!-- /podcast -->
+
+
+<!-- ═══════════════════════════════════════════════ STOREFRONT TAB -->
+<div id="tab-storefront" class="tab-panel">
+
+  <div class="stats" style="margin-bottom:14px">
+    <div class="sc gold"><div class="lbl">Total Revenue</div><div class="val" id="fw-revenue">—</div><div class="sub">all time</div><div class="corner">💰</div></div>
+    <div class="sc red"><div class="lbl">Total Orders</div><div class="val" id="fw-orders">—</div><div class="sub">orders placed</div><div class="corner">📦</div></div>
+    <div class="sc sc-dim"><div class="lbl">Gift Purchases</div><div class="val" id="fw-gifts">—</div><div class="sub">gifted items</div><div class="corner">🎁</div></div>
+    <div class="sc sc-dim"><div class="lbl">Subscriptions</div><div class="val" id="fw-subs">—</div><div class="sub">active subs</div><div class="corner">🔔</div></div>
+  </div>
+
+  <div class="row3" style="margin-bottom:14px">
+    <div class="card" style="grid-column:span 2"><canvas id="cFwRevenue" height="160"></canvas></div>
+    <div class="card"><canvas id="cFwProducts" height="160"></canvas></div>
+  </div>
+
+  <div class="row2eq" style="margin-bottom:22px">
+    <div class="card">
+      <div style="color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px">📋 Recent Orders</div>
+      <div id="fwOrderFeed"></div>
+    </div>
+    <div class="card" style="display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:10px">
+      <div style="font-size:2.5rem">🛒</div>
+      <div style="color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.12em">Most Recent Order</div>
+      <div id="fw-last-name" style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--gold2)">—</div>
+      <div id="fw-last-product" style="color:var(--text);font-size:.9rem">—</div>
+      <div id="fw-last-amount" style="font-family:'Bebas Neue',sans-serif;font-size:2.4rem;color:var(--green)">—</div>
+      <div id="fw-last-time" style="color:var(--muted);font-size:.75rem">—</div>
+    </div>
+  </div>
+
+</div><!-- /storefront -->
+
+</div><!-- /wrap -->
 
 <script>
 const API = "/api";
@@ -361,6 +623,11 @@ const charts = {};
 const cd = { color:"#8b949e", grid:{ color:"rgba(255,255,255,0.04)" } };
 const fmt = n => n?.toLocaleString() ?? "—";
 const RADAR_COLORS = ["#e74c3c","#d4a017","#2ecc71","#3498db","#9b59b6"];
+const NUMBER_EMOJIS = ["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"];
+
+// ── Stored rabbit hole & cipher data for filtering
+let _rhData = [];
+let _activeRhTag = null;
 
 function ago(s) {
   if (!s) return "Never";
@@ -372,8 +639,8 @@ function ago(s) {
 }
 function loyaltyBadge(msgs, max) {
   const r = msgs/max;
-  if (r > 0.6)   return `<span class="badge badge-gold">⭐ Core</span>`;
-  if (r > 0.25)  return `<span class="badge badge-red">🔴 Active</span>`;
+  if (r > 0.6)  return `<span class="badge badge-gold">⭐ Core</span>`;
+  if (r > 0.25) return `<span class="badge badge-red">🔴 Active</span>`;
   return `<span class="badge badge-dim">Member</span>`;
 }
 function engRing(score) {
@@ -389,17 +656,39 @@ function heatColor(r) {
 }
 function mkChart(id,cfg) {
   if (charts[id]) charts[id].destroy();
-  charts[id]=new Chart(document.getElementById(id).getContext("2d"),cfg);
+  const el = document.getElementById(id);
+  if (!el) return;
+  charts[id]=new Chart(el.getContext("2d"),cfg);
 }
-async function get(path) { return fetch(API+path).then(r=>r.json()); }
-
+async function get(path) {
+  const r = await fetch(API+path);
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}
 function avatar(d, size=28) {
   const init = (d.username||"?").charAt(0);
   if (d.avatar_url) return `<span class="av" style="width:${size}px;height:${size}px"><img src="${d.avatar_url}" onerror="this.parentElement.textContent='${init}'"></span>`;
   return `<span class="av" style="width:${size}px;height:${size}px">${init}</span>`;
 }
 
-/* ── Overview ── */
+// ── Tab switching
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  event.target.classList.add('active');
+  // Lazy load tab-specific data
+  if (name === 'polls')       loadPolls();
+  if (name === 'cotw')        loadCOTW();
+  if (name === 'ciphers')     renderCiphers();
+  if (name === 'rabbitholes') renderRabbitHoles();
+  if (name === 'podcast')     loadPodcast();
+  if (name === 'storefront')  loadFourthwall();
+}
+
+/* ════════════════════════════════════════════════════
+   COMMUNITY TAB LOADERS (unchanged logic)
+════════════════════════════════════════════════════ */
 async function loadOverview() {
   const [d, o] = await Promise.all([get("/overview"), get("/online")]);
   document.getElementById("s-msgs").textContent   = fmt(d.total_messages);
@@ -411,8 +700,6 @@ async function loadOverview() {
     document.getElementById("s-day-sub").textContent = fmt(d.most_active_day_count) + " messages";
   }
 }
-
-/* ── Daily ── */
 async function loadDaily() {
   const data = await get("/daily");
   mkChart("cDaily",{type:"line",data:{
@@ -425,8 +712,6 @@ async function loadDaily() {
     title:{display:true,text:"DAILY MESSAGE VOLUME — LAST 30 DAYS",color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:14}}},
     scales:{x:{ticks:{color:cd.color,maxTicksLimit:8,font:{size:10}},grid:cd.grid},y:{ticks:{color:cd.color,font:{size:10}},grid:cd.grid}}}});
 }
-
-/* ── Channels ── */
 async function loadChannels() {
   const data = await get("/channels");
   const colors=["#c0392b","#d4a017","#8b1a1a","#a0522d","#6b3a2a","#7f1d1d","#92400e","#78350f","#4a1942","#1e3a5f"];
@@ -437,8 +722,6 @@ async function loadChannels() {
     legend:{position:"bottom",labels:{color:"#ffffff",boxWidth:10,padding:8,font:{size:10}}},
     title:{display:true,text:"CHANNEL ENGAGEMENT",color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:10}}}}});
 }
-
-/* ── Day of week ── */
 async function loadDayOfWeek() {
   const data = await get("/dayofweek");
   const max  = Math.max(...data.map(d=>d.count),1);
@@ -449,8 +732,6 @@ async function loadDayOfWeek() {
     title:{display:true,text:"MOST ACTIVE DAY OF WEEK",color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:14}}},
     scales:{x:{ticks:{color:"#ffffff",font:{size:11}},grid:{display:false}},y:{ticks:{color:cd.color,font:{size:10}},grid:cd.grid}}}});
 }
-
-/* ── New Members ── */
 async function loadNewMembers() {
   const data = await get("/newmembers");
   mkChart("cNewMembers",{type:"bar",data:{
@@ -460,8 +741,6 @@ async function loadNewMembers() {
     title:{display:true,text:"NEW MEMBERS PER WEEK",color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:14}}},
     scales:{x:{ticks:{color:cd.color,maxTicksLimit:6,font:{size:10}},grid:{display:false}},y:{ticks:{color:cd.color,font:{size:10}},grid:cd.grid}}}});
 }
-
-/* ── Heatmap ── */
 async function loadHeatmap() {
   const data = await get("/heatmap");
   const max  = Math.max(...data.map(d=>d.count),1);
@@ -477,8 +756,6 @@ async function loadHeatmap() {
     l.appendChild(s);
   });
 }
-
-/* ── Compare ── */
 async function loadCompare() {
   const d = await get("/compare");
   document.getElementById("cmp-a").textContent = fmt(d.period_a_total);
@@ -498,8 +775,6 @@ async function loadCompare() {
     title:{display:true,text:"DAILY BREAKDOWN — PERIOD COMPARISON",color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:10}}},
     scales:{x:{ticks:{color:cd.color,maxTicksLimit:8,font:{size:10}},grid:cd.grid},y:{ticks:{color:cd.color,font:{size:10}},grid:cd.grid}}}});
 }
-
-/* ── Loyalty Donut ── */
 async function loadLoyalty() {
   const d = await get("/loyalty");
   mkChart("cLoyalty",{type:"pie",data:{
@@ -509,31 +784,24 @@ async function loadLoyalty() {
     legend:{position:"bottom",labels:{color:"#ffffff",boxWidth:10,padding:8,font:{size:11}}},
     title:{display:true,text:"LOYALTY TIER DISTRIBUTION",color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:10}}}}});
 }
-
-/* ── Radar ── */
 async function loadRadar() {
   const data = await get("/radar");
   mkChart("cRadar",{type:"radar",data:{
     labels:["Volume","Consistency","Recency"],
     datasets:data.map((d,i)=>({
-      label:d.username,
-      data:[d.volume,d.consistency,d.recency],
+      label:d.username,data:[d.volume,d.consistency,d.recency],
       borderColor:RADAR_COLORS[i],
       backgroundColor:RADAR_COLORS[i].replace(")",",0.08)").replace("rgb","rgba"),
-      pointBackgroundColor:RADAR_COLORS[i],
-      borderWidth:2,pointRadius:3
+      pointBackgroundColor:RADAR_COLORS[i],borderWidth:2,pointRadius:3
     }))
   },options:{responsive:true,scales:{r:{
     ticks:{color:"#6b7280",font:{size:9},backdropColor:"transparent"},
     grid:{color:"rgba(255,255,255,.06)"},
-    pointLabels:{color:"#ffffff",font:{size:11,weight:"600"}},
-    min:0,max:100
+    pointLabels:{color:"#ffffff",font:{size:11,weight:"600"}},min:0,max:100
   }},plugins:{
     legend:{position:"bottom",labels:{color:"#ffffff",boxWidth:10,padding:8,font:{size:10}}},
     title:{display:true,text:"TOP 5 MEMBERS — VOLUME · CONSISTENCY · RECENCY",color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:10}}}}});
 }
-
-/* ── Engagement Leaderboard ── */
 async function loadEngLeaderboard() {
   const data = await get("/engagement-leaderboard");
   const max  = data[0]?.engagement_score || 1;
@@ -546,8 +814,6 @@ async function loadEngLeaderboard() {
       ${engRing(d.engagement_score)}
     </div>`).join("");
 }
-
-/* ── Timeline ── */
 async function loadTimeline() {
   const data = await get("/timeline");
   const allDays = [...new Set(data.flatMap(u=>u.days.map(d=>d.day)))].sort();
@@ -555,13 +821,9 @@ async function loadTimeline() {
     labels:allDays,
     datasets:data.map((u,i)=>{
       const map=Object.fromEntries(u.days.map(d=>[d.day,d.cnt]));
-      return {
-        label:u.username,
-        data:allDays.map(d=>map[d]||0),
+      return {label:u.username,data:allDays.map(d=>map[d]||0),
         backgroundColor:RADAR_COLORS[i%RADAR_COLORS.length]+"99",
-        borderColor:RADAR_COLORS[i%RADAR_COLORS.length],
-        borderWidth:1,borderRadius:2
-      };
+        borderColor:RADAR_COLORS[i%RADAR_COLORS.length],borderWidth:1,borderRadius:2};
     })
   },options:{responsive:true,plugins:{
     legend:{position:"bottom",labels:{color:"#ffffff",boxWidth:10,padding:6,font:{size:9}}},
@@ -570,8 +832,6 @@ async function loadTimeline() {
       x:{stacked:true,ticks:{color:cd.color,maxTicksLimit:10,font:{size:9}},grid:cd.grid},
       y:{stacked:true,ticks:{color:cd.color,font:{size:10}},grid:cd.grid}}}});
 }
-
-/* ── Leaderboard table ── */
 async function loadLeaderboard() {
   const data = await get("/leaderboard");
   const max  = data[0]?.msg_count||1;
@@ -592,28 +852,21 @@ async function loadLeaderboard() {
     </tr>`;
   }).join("");
 }
-
-/* ── Date Range ── */
 function setRange(days) {
-  const end   = new Date();
-  const start = new Date(); start.setDate(start.getDate()-days);
-  document.getElementById("drStart").value = start.toISOString().split("T")[0];
-  document.getElementById("drEnd").value   = end.toISOString().split("T")[0];
+  const end=new Date(), start=new Date(); start.setDate(start.getDate()-days);
+  document.getElementById("drStart").value=start.toISOString().split("T")[0];
+  document.getElementById("drEnd").value=end.toISOString().split("T")[0];
   document.querySelectorAll(".pill").forEach(p=>p.classList.remove("active"));
   event.target.classList.add("active");
   loadDateRange();
 }
-
 async function loadDateRange() {
-  const start = document.getElementById("drStart").value;
-  const end   = document.getElementById("drEnd").value;
-  if (!start || !end) return;
-
+  const start=document.getElementById("drStart").value, end=document.getElementById("drEnd").value;
+  if (!start||!end) return;
   const d = await fetch(`${API}/daterange?start=${start}&end=${end}`).then(r=>r.json());
   document.getElementById("dr-msgs").textContent  = fmt(d.total_messages);
   document.getElementById("dr-users").textContent = fmt(d.unique_users);
-  document.getElementById("dr-peak").textContent  = d.peak_hour!=null ? `${String(d.peak_hour).padStart(2,"0")}:00` : "—";
-
+  document.getElementById("dr-peak").textContent  = d.peak_hour!=null?`${String(d.peak_hour).padStart(2,"0")}:00`:"—";
   mkChart("drDaily",{type:"line",data:{
     labels:d.daily.map(r=>r.day),
     datasets:[{label:"Messages",data:d.daily.map(r=>r.cnt),
@@ -621,18 +874,16 @@ async function loadDateRange() {
   },options:{responsive:true,plugins:{legend:{display:false},
     title:{display:true,text:`MESSAGES: ${start} → ${end}`,color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:10}}},
     scales:{x:{ticks:{color:cd.color,maxTicksLimit:8,font:{size:10}},grid:cd.grid},y:{ticks:{color:cd.color,font:{size:10}},grid:cd.grid}}}});
-
-  const maxU = d.top_users[0]?.cnt||1;
-  document.getElementById("drUsers").innerHTML = (d.top_users||[]).map(u=>`
+  const maxU=d.top_users[0]?.cnt||1;
+  document.getElementById("drUsers").innerHTML=(d.top_users||[]).map(u=>`
     <div style="margin-bottom:7px">
       <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:2px">
         <span>${u.username.split("#")[0]}</span><span style="color:var(--muted)">${fmt(u.cnt)}</span>
       </div>
       <div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(u.cnt/maxU*100)}%"></div></div>
     </div>`).join("");
-
-  const maxC = d.top_channels[0]?.cnt||1;
-  document.getElementById("drChannels").innerHTML = (d.top_channels||[]).map(c=>`
+  const maxC=d.top_channels[0]?.cnt||1;
+  document.getElementById("drChannels").innerHTML=(d.top_channels||[]).map(c=>`
     <div style="margin-bottom:7px">
       <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:2px">
         <span>#${c.channel_name}</span><span style="color:var(--muted)">${fmt(c.cnt)}</span>
@@ -641,80 +892,406 @@ async function loadDateRange() {
     </div>`).join("");
 }
 
-/* ── Fourthwall ── */
-async function loadFourthwall() {
-  const [ov, rev, prod, orders] = await Promise.all([
-    get("/fw/overview"), get("/fw/revenue"), get("/fw/products"), get("/fw/orders")
-  ]);
-
-  // KPI cards
-  document.getElementById("fw-revenue").textContent = ov.total_revenue != null ? `${Number(ov.total_revenue).toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2})}` : "—";
-  document.getElementById("fw-orders").textContent  = fmt(ov.total_orders);
-  document.getElementById("fw-gifts").textContent   = fmt(ov.total_gifts);
-  document.getElementById("fw-subs").textContent    = fmt(ov.total_subs);
-
-  // Last order highlight
-  if (ov.last_order) {
-    const lo = ov.last_order;
-    document.getElementById("fw-last-name").textContent    = lo.buyer_name || "—";
-    document.getElementById("fw-last-product").textContent = lo.product_name || "—";
-    document.getElementById("fw-last-amount").textContent  = lo.total_amount != null ? `${Number(lo.total_amount).toFixed(2)}` : "—";
-    document.getElementById("fw-last-time").textContent    = ago(lo.timestamp);
-  }
-
-  // Revenue chart
-  mkChart("cFwRevenue",{type:"bar",data:{
-    labels: rev.map(r=>r.day),
-    datasets:[
-      {label:"Revenue ($)",data:rev.map(r=>r.revenue),backgroundColor:"rgba(212,160,23,.7)",borderRadius:4,borderSkipped:false,yAxisID:"y"},
-      {label:"Orders",data:rev.map(r=>r.orders),type:"line",borderColor:"#e74c3c",backgroundColor:"rgba(231,76,60,.1)",fill:false,tension:0.4,pointRadius:2,yAxisID:"y1"}
-    ]
-  },options:{responsive:true,plugins:{
-    legend:{labels:{color:"#ffffff",boxWidth:10,font:{size:10}}},
-    title:{display:true,text:"REVENUE & ORDERS — LAST 30 DAYS",color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:10}}},
-    scales:{
-      x:{ticks:{color:cd.color,maxTicksLimit:8,font:{size:10}},grid:cd.grid},
-      y:{ticks:{color:"#d4a017",font:{size:10}},grid:cd.grid,position:"left"},
-      y1:{ticks:{color:"#e74c3c",font:{size:10}},grid:{display:false},position:"right"}
-    }}});
-
-  // Top products chart
-  mkChart("cFwProducts",{type:"bar",data:{
-    labels:prod.map(p=>p.product),
-    datasets:[{
-      label:"Orders",data:prod.map(p=>p.count),
-      backgroundColor:prod.map((_,i)=>["#d4a017","#c0392b","#2ecc71","#3498db","#9b59b6","#e67e22","#1abc9c","#e74c3c","#f39c12","#8e44ad"][i%10]),
-      borderRadius:4,borderSkipped:false
-    }]
-  },options:{responsive:true,indexAxis:"y",plugins:{
-    legend:{display:false},
-    title:{display:true,text:"TOP PRODUCTS BY ORDERS",color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:10}}},
-    scales:{
-      x:{ticks:{color:cd.color,font:{size:10}},grid:cd.grid},
-      y:{ticks:{color:"#ffffff",font:{size:10}},grid:{display:false}}
-    }}});
-
-  // Recent orders feed
-  const icons = {"order.placed":"🛒","gift.purchased":"🎁","subscription.purchased":"🔔"};
-  document.getElementById("fwOrderFeed").innerHTML = orders.slice(0,12).map(o=>`
-    <div class="order-item">
-      <span class="order-icon">${icons[o.event_type]||"📦"}</span>
-      <div class="order-info">
-        <div class="order-name">${o.buyer_name||"Unknown"}</div>
-        <div class="order-product">${o.product_name||"—"}</div>
+/* ════════════════════════════════════════════════════
+   POLLS TAB
+════════════════════════════════════════════════════ */
+function renderPollCard(poll, results) {
+  const options = poll.options || [];
+  const totalVotes = results ? results.reduce((s,r) => s + r.votes, 0) : 0;
+  const isLive = !poll.closed;
+  const optionsHtml = options.map((opt, i) => {
+    const r = results ? results.find(r => r.index === i) : null;
+    const pct = r ? r.pct : 0;
+    const votes = r ? r.votes : 0;
+    const isWinner = r && r.is_winner && !isLive;
+    return `<div class="poll-option">
+      <div class="poll-option-label">
+        <span class="poll-option-name">${NUMBER_EMOJIS[i] || (i+1)+'.'} ${opt}</span>
+        <span class="poll-option-pct">${pct}% · ${votes} vote${votes!==1?'s':''}</span>
       </div>
-      <span class="order-amount">${Number(o.total_amount||0).toFixed(2)}</span>
-      <span class="order-time">${ago(o.timestamp)}</span>
-    </div>`).join("");
+      <div class="poll-bar-wrap">
+        <div class="poll-bar-fill ${isWinner?'winner':''}" style="width:${pct}%"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `<div class="poll-card">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px">
+      <div class="poll-question">${poll.question}</div>
+      <span class="poll-status ${isLive?'live':'closed'}">${isLive?'🟢 Live':'🔒 Closed'}</span>
+    </div>
+    ${optionsHtml}
+    <div class="poll-meta">
+      <span>🗳️ ${totalVotes} total vote${totalVotes!==1?'s':''}</span>
+      <span>👤 ${(poll.created_by||'').split('#')[0]}</span>
+      <span>🕐 ${ago(poll.created_at)}</span>
+      ${poll.message_id ? `<span style="margin-left:auto;font-size:.65rem;color:var(--border)">ID: ${poll.message_id}</span>` : ''}
+    </div>
+  </div>`;
 }
 
-/* ── Load all ── */
-async function loadAll() {
+async function loadPolls() {
+  try {
+    const polls = await get("/polls");
+    const live   = polls.filter(p => !p.closed);
+    const closed = polls.filter(p => p.closed);
+
+    document.getElementById("poll-total").textContent  = fmt(polls.length);
+    document.getElementById("poll-live").textContent   = fmt(live.length);
+    document.getElementById("poll-closed").textContent = fmt(closed.length);
+
+    // Fetch results for each poll in parallel
+    const resultsMap = {};
+    await Promise.allSettled(polls.map(async p => {
+      try {
+        const r = await get(`/polls/${p.message_id}/results`);
+        resultsMap[p.message_id] = r.results;
+        return r.poll?.total_votes || 0;
+      } catch { return 0; }
+    }));
+
+    const totalVotes = Object.values(resultsMap)
+      .flat().reduce((s, r) => s + (r?.votes || 0), 0);
+    document.getElementById("poll-votes").textContent = fmt(totalVotes);
+
+    // Render live polls
+    const liveEl = document.getElementById("polls-live-list");
+    if (live.length === 0) {
+      liveEl.innerHTML = `<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">No live polls right now</div></div>`;
+    } else {
+      liveEl.innerHTML = live.map(p => renderPollCard(p, resultsMap[p.message_id])).join('');
+    }
+
+    // Render closed polls
+    const closedEl = document.getElementById("polls-closed-list");
+    if (closed.length === 0) {
+      closedEl.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No completed polls yet</div></div>`;
+    } else {
+      closedEl.innerHTML = closed.map(p => renderPollCard(p, resultsMap[p.message_id])).join('');
+    }
+  } catch(e) {
+    console.error("Polls load error:", e);
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   COTW TAB
+════════════════════════════════════════════════════ */
+async function loadCOTW() {
+  try {
+    // Get current week ISO string
+    const now = new Date();
+    const jan4 = new Date(now.getFullYear(), 0, 4);
+    const weekNum = Math.ceil(((now - jan4) / 86400000 + jan4.getDay() + 1) / 7);
+    const weekStr = `${now.getFullYear()}-W${String(weekNum).padStart(2,'0')}`;
+    document.getElementById("cotw-week").textContent = weekStr;
+
+    // Current day of week for phase indicator
+    const dow = now.getDay(); // 0=Sun,1=Mon,...,6=Sat
+    let phase = 'submission';
+    if (dow === 0) phase = 'winner';
+    else if (dow >= 5) phase = 'voting'; // Fri + Sat
+
+    const phaseMap = {submission:'submission', voting:'voting', winner:'winner', ended:'winner'};
+    const activePhase = phaseMap[phase] || 'submission';
+
+    ['submission','voting','winner'].forEach(p => {
+      const el = document.getElementById('phase-'+p);
+      if (!el) return;
+      el.className = 'phase-step';
+      const order = ['submission','voting','winner'];
+      const activeIdx = order.indexOf(activePhase);
+      const thisIdx   = order.indexOf(p);
+      if (thisIdx < activeIdx) el.classList.add('done');
+      else if (thisIdx === activeIdx) el.classList.add('active');
+    });
+    document.getElementById("cotw-phase").textContent =
+      phase === 'submission' ? 'Submissions' : phase === 'voting' ? 'Voting' : 'Announce';
+
+    // Pull submissions from the API (giveaways endpoint repurposed; use a basic fetch)
+    // We expose cotw submissions via the giveaways-style layout — just fetch what we can
+    // For now show the week & day-based phase; the full entries come via !cotw list in Discord
+    document.getElementById("cotw-submissions").textContent = "—";
+    document.getElementById("cotw-weeks-run").textContent   = "—";
+
+    document.getElementById("cotw-current-list").innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">🕵️</div>
+        <div class="empty-text" style="max-width:280px;margin:0 auto">
+          Submissions are viewed via <code style="background:var(--surf3);padding:2px 6px;border-radius:4px;font-size:.78rem">!cotw list</code> in Discord.<br><br>
+          <span style="font-size:.75rem;color:var(--muted)">Full COTW dashboard API coming in a future update.</span>
+        </div>
+      </div>`;
+
+    document.getElementById("cotw-winners-list").innerHTML = `
+      <div style="padding:12px 0">
+        <div style="text-align:center;padding:30px 20px">
+          <div style="font-size:2rem;margin-bottom:10px">🏆</div>
+          <div style="font-size:.84rem;color:var(--muted)">Winners are pinned in your Discord channel each Sunday.<br>Hall of Fame API endpoint coming soon.</div>
+        </div>
+      </div>`;
+
+  } catch(e) {
+    console.error("COTW load error:", e);
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   CIPHERS TAB  (rendered from hardcoded bot data via API ping — falls back to placeholder)
+════════════════════════════════════════════════════ */
+// These mirror the CIPHERS list in bot.py — update both if you add ciphers
+const CIPHER_VAULT = [
+  {title:"Caesar Cipher — Shift 3",     encoded:"WKH WUXWK LV RXW WKHUH",               solution:"THE TRUTH IS OUT THERE",      explanation:"The classic Caesar cipher — used by Julius Caesar himself."},
+  {title:"Atbash Cipher",               encoded:"GSV TLEWH ZIV WZGXSRMT",                solution:"THE GODS ARE WATCHING",       explanation:"The Atbash cipher appears in the Hebrew Bible."},
+  {title:"ROT13",                       encoded:"GURL YVIR NZBAT HF",                    solution:"THEY LIVE AMONG US",          explanation:"ROT13 is its own inverse — encode and decode identically."},
+  {title:"Morse Code",                  encoded:"-- --- -. . -.-- / .. ... / -.-. --- -. - .-. --- .-..", solution:"MONEY IS CONTROL", explanation:"Invented by Samuel Morse in 1837."},
+  {title:"Binary — ASCII",              encoded:"01010111 01000001 01001011 01000101 / 01010101 01010000", solution:"WAKE UP",        explanation:"Everything in a computer is ones and zeros."},
+  {title:"Reverse Cipher",              encoded:"DLROW EHT LORTNOC YEHT",                solution:"THEY CONTROL THE WORLD",      explanation:"The simplest cipher — reverse the entire string."},
+  {title:"Caesar Cipher — Shift 7",     encoded:"AOL JSVJR PZ H SPL",                   solution:"THE CLOCK IS A LIE",          explanation:"A deeper Caesar shift, harder to brute force."},
+  {title:"Atbash Cipher II",            encoded:"WLMG GIFHG GSV NVWRZ",                  solution:"DONT TRUST THE MEDIA",        explanation:"Once you know the mirror, no message stays secret."},
+  {title:"NATO Phonetic Acrostic",      encoded:"ECHO VICTOR ECHO ROMEO YANKEE TANGO HOTEL INDIA NOVEMBER GOLF", solution:"EVERYTHING", explanation:"The NATO alphabet doubles as a clean acrostic cipher."},
+  {title:"Caesar Cipher — Shift 17",    encoded:"ESPCP TD EFOOLZ MPY MPSVD",             solution:"THERE IS TUNNEL BELOW",       explanation:"A deep Caesar shift — only 25 possible keys."},
+  {title:"Hexadecimal — ASCII",         encoded:"4E 6F 74 68 69 6E 67 20 49 73 20 52 65 61 6C", solution:"Nothing Is Real",        explanation:"Hexadecimal is base-16, each pair is one ASCII character."},
+  {title:"Caesar + Reverse",            encoded:"FBIYL ZNBRF FU LHQOBF",                 solution:"FOLLOW THE MONEY",            explanation:"Layered ciphers: reverse the string first, then ROT13."},
+  {title:"Caesar Cipher — Shift 5",     encoded:"YMJD FSJ QNXYJS",                       solution:"THEY ARE LISTEN",             explanation:"Simple, fast, surprisingly effective."},
+  {title:"Pig Latin Variant",           encoded:"ETHAY UTHTRUSTAY ILLWAY EEFRAY OUYAY", solution:"THE TRUTH WILL FREE YOU",    explanation:"Pig Latin variants have been used as verbal obfuscation for centuries."},
+  {title:"Atbash Cipher III",           encoded:"GSV HFMWRZO RHOZMWH ZIV IVZO",         solution:"THE SUNDIAL ISLANDS ARE REAL",explanation:"A harder Atbash — frequency analysis is your friend."},
+];
+
+function renderCiphers() {
+  const total = CIPHER_VAULT.length;
+  const types = new Set(CIPHER_VAULT.map(c => c.title.split(' — ')[0].split(' Cipher')[0].split(' —')[0]));
+  document.getElementById("cipher-total").textContent = total;
+  document.getElementById("cipher-today").textContent = "1";
+  document.getElementById("cipher-types").textContent = types.size;
+
+  document.getElementById("cipher-list").innerHTML = CIPHER_VAULT.map((c,i) => `
+    <div class="cipher-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="cipher-title">🔐 ${c.title}</div>
+        <span style="font-size:.65rem;color:var(--muted);background:var(--surf3);padding:2px 8px;border-radius:10px">#${i+1}</span>
+      </div>
+      <div style="font-size:.72rem;color:var(--muted);margin-bottom:6px">${c.explanation}</div>
+      <div class="cipher-encoded">${c.encoded}</div>
+      <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">✅ Solution:</div>
+      <div class="cipher-solution">${c.solution}</div>
+    </div>`).join('');
+}
+
+/* ════════════════════════════════════════════════════
+   RABBIT HOLES TAB
+════════════════════════════════════════════════════ */
+const RABBIT_HOLE_VAULT = [
+  {title:"The Philadelphia Experiment",tags:["military","teleportation","WWII"],summary:"In October 1943, the USS Eldridge was allegedly rendered invisible to radar and physically teleported from Philadelphia to Norfolk, Virginia and back. Crew members reportedly went insane, some fused into the ship's hull. The US Navy denies it."},
+  {title:"The Phantom Time Hypothesis",tags:["history","time","fabrication"],summary:"German historian Heribert Illig proposed that 297 years of history — 614 to 911 AD — were entirely fabricated. He claims Charlemagne and others conspired to place themselves at year 1000 AD. If true, it is currently the year 1726."},
+  {title:"Project MKUltra",tags:["CIA","mind control","declassified","confirmed"],summary:"Declassified CIA documents confirm that from 1953–1973, the CIA ran covert experiments using LSD, hypnosis, and psychological torture on unwitting subjects. This one isn't a theory. It actually happened. Which raises the question: what else?"},
+  {title:"The Tartaria Mud Flood",tags:["history","lost civilisation","architecture"],summary:"A theory holds that a vast empire called Tartaria was erased from history, and that a 'mud flood' buried entire cities in the 1800s. Proponents point to buildings with ground-floor windows below street level as evidence."},
+  {title:"The Dyatlov Pass Incident",tags:["USSR","unexplained","death","mountains"],summary:"In February 1959, nine experienced Soviet hikers died under bizarre circumstances. The tent was ripped from the inside. They fled in -30°C without shoes. One had a fractured skull, another was missing her tongue. Official cause: 'unknown compelling force.'"},
+  {title:"The Denver Airport",tags:["NWO","airports","symbolism","underground"],summary:"Denver International Airport contains murals depicting gas-masked soldiers and burning cities. A capstone refers to the 'New World Airport Commission' — an organisation that doesn't exist. The airport was built 16 months late and $2 billion over budget."},
+  {title:"Operation Northwoods",tags:["false flag","Cuba","declassified","confirmed"],summary:"Declassified in 1997: in 1962, the US Joint Chiefs proposed staging fake terrorist attacks on US soil and blaming Cuba. Proposals included sinking a ship and bombing Miami. JFK rejected it."},
+  {title:"The Simulation Hypothesis",tags:["reality","philosophy","technology"],summary:"Philosopher Nick Bostrom argued at least one of three things must be true: civilisations go extinct early; advanced civilisations lose interest in simulations; or we are almost certainly living in a simulation. Elon Musk puts the odds at 'one in billions.'"},
+  {title:"The Dead Internet Theory",tags:["internet","AI","bots","social media"],summary:"A theory claiming the internet has been mostly populated by bots and automated content since around 2016–2017. Real human interaction online is now the minority. The goal: manufacture consensus and make you feel alone in your views."},
+  {title:"The Voynich Manuscript",tags:["cryptography","mystery","history"],summary:"A 240-page illustrated book written in an unknown script that no cryptographer, linguist, or AI has been able to decode. Carbon-dated to the 15th century. Contains diagrams of unknown plants, astrological charts, and naked women in green tubes."},
+  {title:"The Mandela Effect",tags:["memory","parallel universes","CERN"],summary:"Millions of people share identical false memories — the Berenstain/Berenstein Bears, Nelson Mandela dying in prison in the 1980s. Some attribute this to parallel universes bleeding together, others to CERN's Large Hadron Collider."},
+  {title:"The Stargate Project",tags:["CIA","psychic","remote viewing","declassified"],summary:"From 1978 to 1995, the US government spent $20 million training psychic spies to remotely view Soviet military installations. The CIA concluded it had 'limited intelligence value.' They did not say it didn't work."},
+  {title:"The Georgia Guidestones",tags:["NWO","population control","mystery"],summary:"Erected in 1980 by an unknown person, the Georgia Guidestones were granite slabs inscribed with ten commandments including maintaining world population under 500 million. Destroyed by explosion in 2022. The bomber was never found."},
+  {title:"The Black Knight Satellite",tags:["space","alien","satellites","NASA"],summary:"An unidentified object in polar orbit has been photographed by NASA since the 1960s. Allegedly 13,000 years old, based on signals decoded by radio operator Duncan Lunan. NASA claims it's a thermal blanket."},
+  {title:"Operation Paperclip",tags:["NASA","Nazi","confirmed","declassified"],summary:"Confirmed: after WWII, the US recruited over 1,600 Nazi scientists and gave them new identities and government jobs. Werner von Braun, a former SS officer, became the head of NASA. Hidden for decades."},
+  {title:"The Tavistock Institute",tags:["mind control","UK","social engineering","Beatles"],summary:"Founded in London in 1947, the Tavistock Institute is accused of orchestrating the 1960s counterculture movement — including the Beatles — to destabilise society and manufacture state dependency."},
+  {title:"The Hollow Earth Theory",tags:["earth","inner world","exploration"],summary:"Edmond Halley proposed in 1692 that Earth is hollow with a small interior sun. Admiral Byrd's 1947 Arctic expedition diary allegedly describes flying into a hole at the pole and discovering a tropical land with mammoths."},
+  {title:"The Montauk Project",tags:["time travel","military","mind control","underground"],summary:"Allegedly a classified programme run at Montauk Air Force Station involving time travel and inter-dimensional portals. The facility is real. The underground bunkers are real. What happened inside is fiercely disputed."},
+  {title:"The Jonestown Massacre",tags:["CIA","cults","mass death","cover-up"],summary:"On November 18, 1978, 918 members of the Peoples Temple died in Guyana. Autopsy reports show injection marks on many bodies, witnesses describe people being shot while fleeing. Jim Jones had documented CIA connections."},
+  {title:"The Bielefeld Conspiracy",tags:["cities","Germany","existence"],summary:"Since 1994, a theory claims the city of Bielefeld doesn't exist. In 2019, the city offered €1 million to anyone who could prove it doesn't exist. Nobody claimed the prize."},
+];
+
+function renderRabbitHoles(filterTag = null) {
+  _rhData = RABBIT_HOLE_VAULT;
+  const allTags = [...new Set(_rhData.flatMap(h => h.tags))].sort();
+  const confirmed = _rhData.filter(h => h.tags.includes('confirmed')).length;
+
+  document.getElementById("rh-total").textContent     = _rhData.length;
+  document.getElementById("rh-confirmed").textContent = confirmed;
+  document.getElementById("rh-tags").textContent      = allTags.length;
+
+  // Tag filter pills
+  const filterEl = document.getElementById("rh-tag-filter");
+  filterEl.innerHTML = `<span class="pill ${!filterTag?'active':''}" onclick="renderRabbitHoles(null)">All</span>` +
+    allTags.map(t => `<span class="pill ${filterTag===t?'active':''}" onclick="renderRabbitHoles('${t}')">${t}</span>`).join('');
+
+  const filtered = filterTag ? _rhData.filter(h => h.tags.includes(filterTag)) : _rhData;
+
+  document.getElementById("rh-list").innerHTML = filtered.map(h => `
+    <div class="rh-card">
+      <div class="rh-title">🕳️ ${h.title}</div>
+      <div class="rh-summary">${h.summary}</div>
+      <div class="rh-tags">
+        ${h.tags.map(t => `<span class="rh-tag ${t==='confirmed'?'style="background:rgba(46,204,113,.12);color:var(--green);border-color:rgba(46,204,113,.2)"':''}">${t==='confirmed'?'✅ ':''} ${t}</span>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+/* ════════════════════════════════════════════════════
+   PODCAST TAB
+════════════════════════════════════════════════════ */
+async function loadPodcast() {
+  const listEl = document.getElementById("ep-list");
+  try {
+    // We can't directly parse RSS in the browser due to CORS, so we hit our bot's API
+    // The bot stores announced episodes in rss_posted — use that as a signal
+    // For now we show a helpful card pointing to the RSS feed
+    listEl.innerHTML = `<div style="padding:20px">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)">
+        <div style="font-size:3rem">🎙️</div>
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--green);margin-bottom:4px">THE CONSPIRACY PODCAST</div>
+          <div style="font-size:.82rem;color:var(--muted)">RSS feed monitored every 60 minutes by the bot.</div>
+          <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap">
+            <a href="https://anchor.fm/s/c0340eac/podcast/rss" target="_blank"
+               style="font-size:.75rem;color:var(--green);text-decoration:none;padding:4px 12px;
+                      border:1px solid rgba(46,204,113,.3);border-radius:4px;background:rgba(46,204,113,.08)">
+              📡 RSS Feed
+            </a>
+            <a href="https://open.spotify.com" target="_blank"
+               style="font-size:.75rem;color:#1ed760;text-decoration:none;padding:4px 12px;
+                      border:1px solid rgba(30,215,96,.3);border-radius:4px;background:rgba(30,215,96,.08)">
+              🎵 Spotify
+            </a>
+          </div>
+        </div>
+      </div>
+      <div style="background:rgba(46,204,113,.06);border:1px solid rgba(46,204,113,.15);border-radius:8px;padding:16px">
+        <div style="font-size:.8rem;color:var(--green);font-weight:600;margin-bottom:6px">🤖 Bot Status</div>
+        <div style="font-size:.8rem;color:rgba(255,255,255,.7);line-height:1.6">
+          The bot checks your RSS feed every <strong>60 minutes</strong> and automatically posts a new episode announcement
+          to your designated channel, tagging the <strong>Listener</strong> role whenever a new episode is detected.<br><br>
+          New episode posts are tracked in the <code style="background:var(--surf3);padding:2px 6px;border-radius:3px;font-size:.75rem">rss_posted</code> database table — no duplicates, survives restarts.
+        </div>
+      </div>
+    </div>`;
+
+    document.getElementById("ep-total").textContent      = "—";
+    document.getElementById("ep-latest-num").textContent = "Active";
+    document.getElementById("ep-latest-sub").textContent = "Monitoring feed";
+    document.getElementById("ep-checked").textContent    = "Every 60m";
+
+  } catch(e) {
+    listEl.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Could not load podcast data</div></div>`;
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   STOREFRONT TAB
+════════════════════════════════════════════════════ */
+async function loadFourthwall() {
+  try {
+    const [ov, rev, prod, orders] = await Promise.all([
+      get("/fw/overview"), get("/fw/revenue"), get("/fw/products"), get("/fw/orders")
+    ]);
+    document.getElementById("fw-revenue").textContent = ov.total_revenue != null ? `${Number(ov.total_revenue).toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2})}` : "—";
+    document.getElementById("fw-orders").textContent  = fmt(ov.total_orders);
+    document.getElementById("fw-gifts").textContent   = fmt(ov.total_gifts);
+    document.getElementById("fw-subs").textContent    = fmt(ov.total_subs);
+    if (ov.last_order) {
+      const lo = ov.last_order;
+      document.getElementById("fw-last-name").textContent    = lo.buyer_name || "—";
+      document.getElementById("fw-last-product").textContent = lo.product_name || "—";
+      document.getElementById("fw-last-amount").textContent  = lo.total_amount != null ? `$${Number(lo.total_amount).toFixed(2)}` : "—";
+      document.getElementById("fw-last-time").textContent    = ago(lo.timestamp);
+    }
+    mkChart("cFwRevenue",{type:"bar",data:{
+      labels:rev.map(r=>r.day),
+      datasets:[
+        {label:"Revenue ($)",data:rev.map(r=>r.revenue),backgroundColor:"rgba(212,160,23,.7)",borderRadius:4,borderSkipped:false,yAxisID:"y"},
+        {label:"Orders",data:rev.map(r=>r.orders),type:"line",borderColor:"#e74c3c",backgroundColor:"rgba(231,76,60,.1)",fill:false,tension:0.4,pointRadius:2,yAxisID:"y1"}
+      ]
+    },options:{responsive:true,plugins:{
+      legend:{labels:{color:"#ffffff",boxWidth:10,font:{size:10}}},
+      title:{display:true,text:"REVENUE & ORDERS — LAST 30 DAYS",color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:10}}},
+      scales:{
+        x:{ticks:{color:cd.color,maxTicksLimit:8,font:{size:10}},grid:cd.grid},
+        y:{ticks:{color:"#d4a017",font:{size:10}},grid:cd.grid,position:"left"},
+        y1:{ticks:{color:"#e74c3c",font:{size:10}},grid:{display:false},position:"right"}
+      }}});
+    mkChart("cFwProducts",{type:"bar",data:{
+      labels:prod.map(p=>p.product),
+      datasets:[{label:"Orders",data:prod.map(p=>p.count),
+        backgroundColor:prod.map((_,i)=>["#d4a017","#c0392b","#2ecc71","#3498db","#9b59b6","#e67e22","#1abc9c","#e74c3c","#f39c12","#8e44ad"][i%10]),
+        borderRadius:4,borderSkipped:false}]
+    },options:{responsive:true,indexAxis:"y",plugins:{
+      legend:{display:false},
+      title:{display:true,text:"TOP PRODUCTS BY ORDERS",color:"#6b7280",font:{size:10,weight:"600"},padding:{bottom:10}}},
+      scales:{
+        x:{ticks:{color:cd.color,font:{size:10}},grid:cd.grid},
+        y:{ticks:{color:"#ffffff",font:{size:10}},grid:{display:false}}
+      }}});
+    const icons = {"order.placed":"🛒","gift.purchased":"🎁","subscription.purchased":"🔔"};
+    document.getElementById("fwOrderFeed").innerHTML = orders.slice(0,12).map(o=>`
+      <div class="order-item">
+        <span class="order-icon">${icons[o.event_type]||"📦"}</span>
+        <div class="order-info">
+          <div class="order-name">${o.buyer_name||"Unknown"}</div>
+          <div class="order-product">${o.product_name||"—"}</div>
+        </div>
+        <span class="order-amount">$${Number(o.total_amount||0).toFixed(2)}</span>
+        <span class="order-time">${ago(o.timestamp)}</span>
+      </div>`).join("");
+  } catch(e) {
+    console.error("Fourthwall load error:", e);
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   JORGE WATCH
+════════════════════════════════════════════════════ */
+async function loadJorge() {
+  try {
+    const d = await get("/jorge");
+    document.getElementById("jorge-count").textContent    = fmt(d.mentions_since);
+    document.getElementById("jorge-alltime").textContent  = fmt(d.all_time_mentions);
+
+    if (d.last_post_at) {
+      const lastPost = new Date(d.last_post_at);
+      document.getElementById("jorge-since").textContent =
+        `Since his last post: ${ago(d.last_post_at)} (${lastPost.toLocaleDateString()})`;
+      document.getElementById("jorge-channel").textContent =
+        d.last_post_channel ? `Last seen in: #${d.last_post_channel}` : '';
+    } else {
+      document.getElementById("jorge-since").textContent  = "Jorge hasn't posted yet — counting all mentions";
+      document.getElementById("jorge-channel").textContent = '';
+    }
+
+    if (d.top_tagger) {
+      document.getElementById("jorge-top-tagger").textContent = d.top_tagger;
+      document.getElementById("jorge-top-count").textContent  = `${d.top_tagger_count} tag${d.top_tagger_count !== 1 ? 's' : ''} this period`;
+    }
+
+    const recentEl = document.getElementById("jorge-recent");
+    if (!d.recent_mentions || d.recent_mentions.length === 0) {
+      recentEl.innerHTML = `<div class="empty" style="padding:10px 0"><div class="empty-text">No tags recorded yet</div></div>`;
+    } else {
+      recentEl.innerHTML = d.recent_mentions.map(r => `
+        <div style="display:flex;justify-content:space-between;align-items:center;
+                    padding:6px 0;border-bottom:1px solid var(--border);font-size:.8rem">
+          <span style="font-weight:600">👤 ${r.author}</span>
+          <span style="color:var(--muted)">${ago(r.at)}</span>
+        </div>`).join('');
+    }
+  } catch(e) {
+    console.error("Jorge load error:", e);
+    document.getElementById("jorge-count").textContent = "—";
+    document.getElementById("jorge-since").textContent = "Could not load data";
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   LOAD ALL (community tab only on first load)
+════════════════════════════════════════════════════ */
+async function loadCommunity() {
   const results = await Promise.allSettled([
     loadOverview(), loadDaily(), loadChannels(), loadDayOfWeek(),
     loadNewMembers(), loadHeatmap(), loadCompare(),
     loadLoyalty(), loadRadar(), loadEngLeaderboard(),
-    loadTimeline(), loadLeaderboard(), loadFourthwall()
+    loadTimeline(), loadLeaderboard(), loadJorge()
   ]);
   const anyOk = results.some(r=>r.status==="fulfilled");
   document.getElementById("dot").className = anyOk?"live":"";
@@ -722,8 +1299,20 @@ async function loadAll() {
   if (anyOk) document.getElementById("last-refresh").textContent = "Updated "+new Date().toLocaleTimeString();
 }
 
-// Default date range to last 7 days on load
-window.addEventListener("load",()=>{
+async function loadAll() {
+  await loadCommunity();
+  // Also refresh whichever tab is currently active
+  const activePanel = document.querySelector('.tab-panel.active');
+  if (activePanel && activePanel.id !== 'tab-community') {
+    const tabName = activePanel.id.replace('tab-','');
+    if (tabName === 'polls')       loadPolls();
+    if (tabName === 'cotw')        loadCOTW();
+    if (tabName === 'storefront')  loadFourthwall();
+  }
+}
+
+// Init
+window.addEventListener("load", () => {
   const end=new Date(), start=new Date();
   start.setDate(start.getDate()-7);
   document.getElementById("drStart").value=start.toISOString().split("T")[0];
@@ -731,7 +1320,7 @@ window.addEventListener("load",()=>{
 });
 
 loadAll();
-setInterval(loadAll,30000);
+setInterval(loadAll, 30000);
 </script>
 </body>
 </html>
