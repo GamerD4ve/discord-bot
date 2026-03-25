@@ -294,7 +294,92 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   </div>
 </div>
 
-<!-- Tab Navigation -->
+<!-- Jorge Rolling Banner -->
+<div id="jorge-banner" style="
+  background: linear-gradient(90deg, rgba(192,57,43,.15), rgba(192,57,43,.08), rgba(192,57,43,.15));
+  border-bottom: 1px solid rgba(192,57,43,.3);
+  padding: 0;
+  height: 36px;
+  overflow: hidden;
+  position: sticky;
+  top: 70px;
+  z-index: 98;
+  display: flex;
+  align-items: center;
+">
+  <!-- Static left label -->
+  <div style="
+    background: var(--red);
+    color: #fff;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: .85rem;
+    letter-spacing: .12em;
+    padding: 0 18px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    flex-shrink: 0;
+    border-right: 1px solid rgba(255,255,255,.15);
+    box-shadow: 4px 0 12px rgba(0,0,0,.4);
+  ">🕵️ JORGE WATCH</div>
+
+  <!-- Scrolling track -->
+  <div style="flex:1;overflow:hidden;position:relative;height:100%">
+    <div id="jorge-ticker" style="
+      display: flex;
+      align-items: center;
+      height: 100%;
+      white-space: nowrap;
+      animation: jorge-scroll 22s linear infinite;
+      will-change: transform;
+    ">
+      <span id="jorge-ticker-text" style="
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 1rem;
+        letter-spacing: .1em;
+        color: var(--red2);
+        padding: 0 60px;
+      ">Loading...</span>
+      <!-- Duplicate for seamless loop -->
+      <span id="jorge-ticker-text2" style="
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 1rem;
+        letter-spacing: .1em;
+        color: var(--red2);
+        padding: 0 60px;
+      ">Loading...</span>
+    </div>
+  </div>
+
+  <!-- Right: live count pill -->
+  <div style="
+    padding: 0 18px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    border-left: 1px solid rgba(192,57,43,.3);
+    flex-shrink: 0;
+    gap: 8px;
+  ">
+    <span style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Pings</span>
+    <span id="jorge-banner-count" style="
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.5rem;
+      color: var(--red2);
+      text-shadow: 0 0 16px var(--glow);
+      line-height: 1;
+    ">—</span>
+  </div>
+</div>
+
+<style>
+@keyframes jorge-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+#jorge-banner:hover #jorge-ticker { animation-play-state: paused; }
+</style>
 <div class="tab-nav">
   <button class="tab-btn active" onclick="switchTab('community')">📡 Community</button>
   <button class="tab-btn" onclick="switchTab('polls')">📊 Polls</button>
@@ -1246,7 +1331,33 @@ async function loadFourthwall() {
 async function loadJorge() {
   try {
     const d = await get("/jorge");
-    document.getElementById("jorge-count").textContent    = fmt(d.mentions_since);
+
+    // ── Banner ──────────────────────────────────────────────────────────────
+    const count     = d.mentions_since ?? 0;
+    const sinceText = d.last_post_at
+      ? `since last Jorge sighting ${ago(d.last_post_at)}`
+      : `all time (Jorge hasn't posted yet)`;
+
+    let flavour = "👀 He can feel it.";
+    if      (count === 0)  flavour = "🟢 Jorge was recently spotted. The clock resets.";
+    else if (count === 1)  flavour = "👀 The countdown begins.";
+    else if (count < 5)   flavour = "😬 He can feel it.";
+    else if (count < 10)  flavour = "📣 Jorge. JORGE.";
+    else if (count < 20)  flavour = "🗳️ At this point it's a campaign.";
+    else if (count < 50)  flavour = "🚨 This is getting out of hand.";
+    else                   flavour = "☠️ Someone call Jorge. Please.";
+
+    const tickerMsg = `🕵️  ${count} PING${count !== 1 ? 'S' : ''} ${sinceText.toUpperCase()}  ·  ${flavour.toUpperCase()}  ·  TOP TAGGER: ${d.top_tagger ? d.top_tagger.toUpperCase() + ` (${d.top_tagger_count}x)` : 'NONE YET'}  ·  ALL-TIME: ${d.all_time_mentions}`;
+    document.getElementById("jorge-ticker-text").textContent  = tickerMsg;
+    document.getElementById("jorge-ticker-text2").textContent = tickerMsg;
+    document.getElementById("jorge-banner-count").textContent = count;
+
+    // Pulse the count red if high
+    const countEl = document.getElementById("jorge-banner-count");
+    countEl.style.color = count >= 20 ? "var(--gold2)" : count >= 10 ? "var(--red2)" : "var(--red2)";
+
+    // ── Dashboard widget ────────────────────────────────────────────────────
+    document.getElementById("jorge-count").textContent    = fmt(count);
     document.getElementById("jorge-alltime").textContent  = fmt(d.all_time_mentions);
 
     if (d.last_post_at) {
@@ -1256,7 +1367,7 @@ async function loadJorge() {
       document.getElementById("jorge-channel").textContent =
         d.last_post_channel ? `Last seen in: #${d.last_post_channel}` : '';
     } else {
-      document.getElementById("jorge-since").textContent  = "Jorge hasn't posted yet — counting all mentions";
+      document.getElementById("jorge-since").textContent   = "Jorge hasn't posted yet — counting all mentions";
       document.getElementById("jorge-channel").textContent = '';
     }
 
@@ -1278,8 +1389,9 @@ async function loadJorge() {
     }
   } catch(e) {
     console.error("Jorge load error:", e);
-    document.getElementById("jorge-count").textContent = "—";
-    document.getElementById("jorge-since").textContent = "Could not load data";
+    document.getElementById("jorge-banner-count").textContent = "—";
+    document.getElementById("jorge-ticker-text").textContent  = "🕵️  JORGE WATCH — COULD NOT LOAD DATA";
+    document.getElementById("jorge-ticker-text2").textContent = "🕵️  JORGE WATCH — COULD NOT LOAD DATA";
   }
 }
 
