@@ -975,6 +975,29 @@ def api_poll_results(message_id):
 
 
 # ─── JORGE MENTION TRACKER API ───────────────────────────────────────────────
+@api.route("/api/jorge/debug")
+def api_jorge_debug():
+    """Shows all channels Jorge has posted in, with his latest message per channel."""
+    try:
+        rows = fetchall("""
+            SELECT channel_id, channel_name,
+                   MAX(timestamp) as last_post,
+                   COUNT(*) as msg_count
+            FROM messages
+            WHERE user_id = %s
+            GROUP BY channel_id, channel_name
+            ORDER BY last_post DESC
+        """, (str(JORGE_USER_ID),))
+        return jsonify([{
+            "channel_id":   r["channel_id"],
+            "channel_name": r["channel_name"],
+            "last_post":    r["last_post"].isoformat() if r["last_post"] else None,
+            "msg_count":    r["msg_count"],
+        } for r in rows])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @api.route("/api/jorge")
 def api_jorge():
     """Returns Jorge's last post time and how many times he's been tagged since then."""
