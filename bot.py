@@ -1164,10 +1164,12 @@ async def on_ready():
     print(f"🎉  Giveaway manager role IDs: {GIVEAWAY_MANAGER_ROLE_IDS}")
     print(f"🎟️  Giveaway entry role ID:    {GIVEAWAY_ENTRY_ROLE_ID}")
 
-    # Sync slash commands
+    # Sync slash commands instantly to the specific guild
     try:
-        synced = await bot.tree.sync()
-        print(f"⚡  Synced {len(synced)} slash command(s)")
+        guild = discord.Object(id=1127292710290735134)
+        bot.tree.copy_global_to(guild=guild)
+        synced = await bot.tree.sync(guild=guild)
+        print(f"⚡  Synced {len(synced)} slash command(s) to guild")
     except Exception as e:
         print(f"⚠️  Could not sync slash commands: {e}")
 
