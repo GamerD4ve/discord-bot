@@ -463,36 +463,45 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   <div class="card" style="margin-bottom:22px"><canvas id="cTimeline" height="220"></canvas></div>
 
   <!-- Jorge Mention Tracker -->
-  <div class="sec-title">🕵️ JORGE WATCH — HOW MANY TIMES HAS JORGE BEEN TAGGED?</div>
+  <div class="sec-title">🕵️ JORGE WATCH — IN SEARCH OF JORGE</div>
   <div class="row2eq" style="margin-bottom:22px">
     <!-- Big counter card -->
     <div class="card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;padding:32px;position:relative;overflow:hidden">
       <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 100%,rgba(192,57,43,.08),transparent 70%);pointer-events:none"></div>
-      <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.18em;color:var(--muted);font-weight:600">Times Tagged Since Last Post</div>
+      <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.18em;color:var(--muted);font-weight:600">Total Signals Since Last Sighting</div>
       <div id="jorge-count" style="font-family:'Bebas Neue',sans-serif;font-size:6rem;line-height:1;color:var(--red2);text-shadow:0 0 40px var(--glow)">—</div>
       <div id="jorge-since" style="font-size:.78rem;color:var(--muted)">Loading...</div>
       <div id="jorge-channel" style="font-size:.72rem;color:var(--muted)"></div>
+      <!-- Breakdown pills -->
+      <div style="display:flex;gap:12px;margin-top:8px">
+        <div style="background:rgba(192,57,43,.1);border:1px solid rgba(192,57,43,.25);border-radius:8px;padding:8px 16px;text-align:center">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:var(--red2)" id="jorge-pings">—</div>
+          <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Button Pings</div>
+        </div>
+        <div style="background:rgba(212,160,23,.08);border:1px solid rgba(212,160,23,.2);border-radius:8px;padding:8px 16px;text-align:center">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:var(--gold2)" id="jorge-mentions">—</div>
+          <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">@Mentions</div>
+        </div>
+      </div>
     </div>
-    <!-- Stats + recent taggers -->
+    <!-- Stats + recent -->
     <div style="display:flex;flex-direction:column;gap:14px">
-      <!-- Sub-stats -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="sc sc-dim" style="padding:16px 18px">
-          <div class="lbl">All-Time Tags</div>
+          <div class="lbl">All-Time Signals</div>
           <div class="val" id="jorge-alltime">—</div>
           <div class="sub">since monitoring</div>
         </div>
         <div class="sc red" style="padding:16px 18px">
-          <div class="lbl">Top Tagger</div>
+          <div class="lbl">Top Pinger</div>
           <div class="val" id="jorge-top-tagger" style="font-size:1.1rem;padding-top:6px">—</div>
           <div class="sub" id="jorge-top-count">this period</div>
         </div>
       </div>
-      <!-- Recent tagger feed -->
       <div class="card" style="flex:1;padding:16px">
-        <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:12px">🔔 Recent Tags</div>
+        <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:12px">🔔 Recent Pings</div>
         <div id="jorge-recent">
-          <div class="empty" style="padding:20px 0"><div class="empty-text">No tags recorded yet</div></div>
+          <div class="empty" style="padding:20px 0"><div class="empty-text">No pings recorded yet</div></div>
         </div>
       </div>
     </div>
@@ -1447,6 +1456,8 @@ async function loadJorge() {
 
     // ── Dashboard widget ────────────────────────────────────────────────────
     document.getElementById("jorge-count").textContent    = fmt(count);
+    document.getElementById("jorge-pings").textContent    = fmt(d.ping_count ?? 0);
+    document.getElementById("jorge-mentions").textContent = fmt(d.mention_count ?? 0);
     document.getElementById("jorge-alltime").textContent  = fmt(d.all_time_mentions);
 
     if (d.last_post_at) {
