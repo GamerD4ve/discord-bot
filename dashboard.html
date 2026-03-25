@@ -591,24 +591,41 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <div class="sc gold"><div class="lbl">Current Week</div><div class="val" id="cotw-week" style="font-size:1.4rem;padding-top:6px">—</div><div class="sub">ISO week</div><div class="corner">📅</div></div>
     <div class="sc red"><div class="lbl">Submissions</div><div class="val" id="cotw-submissions">—</div><div class="sub">this week</div><div class="corner">📬</div></div>
     <div class="sc sc-dim"><div class="lbl">Phase</div><div class="val" id="cotw-phase" style="font-size:1.4rem;padding-top:6px">—</div><div class="sub">current stage</div><div class="corner">🔄</div></div>
-    <div class="sc green"><div class="lbl">Total Weeks Run</div><div class="val" id="cotw-weeks-run">—</div><div class="sub">since launch</div><div class="corner">🗓️</div></div>
+    <div class="sc green"><div class="lbl">Total Winners</div><div class="val" id="cotw-weeks-run">—</div><div class="sub">hall of fame entries</div><div class="corner">🏆</div></div>
   </div>
 
-  <div class="row3-21">
+  <div class="row3-21" style="margin-bottom:22px">
+
     <!-- This week's submissions -->
     <div>
       <div class="sec-title">THIS WEEK'S SUBMISSIONS</div>
-      <div id="cotw-current-list" class="scroll-y">
-        <div class="empty"><div class="empty-icon">🕵️</div><div class="empty-text">No submissions yet this week</div></div>
+      <div id="cotw-current-list">
+        <div class="empty"><div class="empty-icon">🕵️</div><div class="empty-text">Loading...</div></div>
       </div>
     </div>
-    <!-- Hall of fame / past winners -->
+
+    <!-- Quick week stats -->
     <div>
-      <div class="sec-title">HALL OF FAME</div>
-      <div id="cotw-winners-list" class="scroll-y">
-        <div class="empty"><div class="empty-icon">🏆</div><div class="empty-text">No winners yet</div></div>
+      <div class="sec-title">WEEK STATS</div>
+      <div class="card" style="text-align:center;padding:28px 16px">
+        <div style="font-size:3rem;margin-bottom:8px">🗳️</div>
+        <div id="cotw-vote-status" style="font-size:.84rem;color:var(--muted);line-height:1.6">
+          Loading phase info...
+        </div>
       </div>
     </div>
+
+  </div>
+
+  <!-- Hall of Fame -->
+  <div class="sec-title">🏆 HALL OF FAME — ALL-TIME WINNERS</div>
+  <div id="cotw-hof-list" style="margin-bottom:16px">
+    <div class="empty"><div class="empty-icon">🏆</div><div class="empty-text">Loading hall of fame...</div></div>
+  </div>
+  <div style="text-align:center;margin-bottom:28px">
+    <button id="cotw-load-more" class="btn" onclick="loadMoreWinners()" style="display:none;padding:10px 28px;font-size:.8rem">
+      ↓ Load More
+    </button>
   </div>
 
 </div><!-- /cotw -->
@@ -1062,63 +1079,135 @@ async function loadPolls() {
 /* ════════════════════════════════════════════════════
    COTW TAB
 ════════════════════════════════════════════════════ */
+let _cotwWinnersPage = 1;
+const COTW_PAGE_SIZE = 10;
+
 async function loadCOTW() {
+  _cotwWinnersPage = 1;
+  await Promise.allSettled([loadCOTWCurrent(), loadCOTWWinners(true)]);
+}
+
+async function loadCOTWCurrent() {
   try {
-    // Get current week ISO string
-    const now = new Date();
-    const jan4 = new Date(now.getFullYear(), 0, 4);
-    const weekNum = Math.ceil(((now - jan4) / 86400000 + jan4.getDay() + 1) / 7);
-    const weekStr = `${now.getFullYear()}-W${String(weekNum).padStart(2,'0')}`;
-    document.getElementById("cotw-week").textContent = weekStr;
+    const d = await get("/cotw/current");
 
-    // Current day of week for phase indicator
-    const dow = now.getDay(); // 0=Sun,1=Mon,...,6=Sat
-    let phase = 'submission';
-    if (dow === 0) phase = 'winner';
-    else if (dow >= 5) phase = 'voting'; // Fri + Sat
+    document.getElementById("cotw-week").textContent        = d.week;
+    document.getElementById("cotw-submissions").textContent = d.submissions.length;
+    document.getElementById("cotw-phase").textContent       =
+      d.phase === "submission" ? "Submissions"
+      : d.phase === "voting"   ? "Voting"
+      : d.phase === "ended"    ? "Ended"
+      : "Pending";
 
-    const phaseMap = {submission:'submission', voting:'voting', winner:'winner', ended:'winner'};
-    const activePhase = phaseMap[phase] || 'submission';
-
-    ['submission','voting','winner'].forEach(p => {
-      const el = document.getElementById('phase-'+p);
+    // Phase strip
+    const order = ["submission", "voting", "ended"];
+    const activeIdx = order.indexOf(d.phase);
+    const phaseEls  = ["submission", "voting", "winner"];
+    phaseEls.forEach((p, i) => {
+      const el = document.getElementById("phase-" + p);
       if (!el) return;
-      el.className = 'phase-step';
-      const order = ['submission','voting','winner'];
-      const activeIdx = order.indexOf(activePhase);
-      const thisIdx   = order.indexOf(p);
-      if (thisIdx < activeIdx) el.classList.add('done');
-      else if (thisIdx === activeIdx) el.classList.add('active');
+      el.className = "phase-step";
+      if (i < activeIdx)      el.classList.add("done");
+      else if (i === activeIdx || (d.phase === "ended" && i === 2)) el.classList.add("active");
     });
-    document.getElementById("cotw-phase").textContent =
-      phase === 'submission' ? 'Submissions' : phase === 'voting' ? 'Voting' : 'Announce';
 
-    // Pull submissions from the API (giveaways endpoint repurposed; use a basic fetch)
-    // We expose cotw submissions via the giveaways-style layout — just fetch what we can
-    // For now show the week & day-based phase; the full entries come via !cotw list in Discord
-    document.getElementById("cotw-submissions").textContent = "—";
-    document.getElementById("cotw-weeks-run").textContent   = "—";
+    // Week stats card
+    const phaseMessages = {
+      pending:    "⏳ Waiting for Monday — submissions open at 8 PM ET.",
+      submission: `📬 Submissions are open! <strong>${d.submissions.length}</strong> theor${d.submissions.length !== 1 ? 'ies' : 'y'} submitted so far.<br><br>Closes Friday at 8 PM ET.`,
+      voting:     `🗳️ Voting is live! <strong>${d.submissions.length}</strong> theories competing.<br><br>Winner announced Sunday at 8 PM ET.`,
+      ended:      `🏆 This week's winner has been announced! Check the Hall of Fame below.`,
+    };
+    document.getElementById("cotw-vote-status").innerHTML =
+      phaseMessages[d.phase] || phaseMessages.pending;
 
-    document.getElementById("cotw-current-list").innerHTML = `
-      <div class="empty">
-        <div class="empty-icon">🕵️</div>
-        <div class="empty-text" style="max-width:280px;margin:0 auto">
-          Submissions are viewed via <code style="background:var(--surf3);padding:2px 6px;border-radius:4px;font-size:.78rem">!cotw list</code> in Discord.<br><br>
-          <span style="font-size:.75rem;color:var(--muted)">Full COTW dashboard API coming in a future update.</span>
+    // Submissions list
+    const listEl = document.getElementById("cotw-current-list");
+    if (!d.submissions.length) {
+      listEl.innerHTML = `<div class="empty"><div class="empty-icon">🕵️</div><div class="empty-text">No submissions yet this week.<br><span style="font-size:.75rem">Opens Monday at 8 PM ET.</span></div></div>`;
+      return;
+    }
+
+    listEl.innerHTML = d.submissions.map((s, i) => `
+      <div class="cotw-card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+          <div class="cotw-rank ${i === 0 ? 'gold' : ''}">${i + 1}</div>
+          <div>
+            <div style="font-weight:700;font-size:.88rem">${s.username}</div>
+            <div style="font-size:.7rem;color:var(--muted)">${ago(s.submitted_at)}</div>
+          </div>
         </div>
-      </div>`;
-
-    document.getElementById("cotw-winners-list").innerHTML = `
-      <div style="padding:12px 0">
-        <div style="text-align:center;padding:30px 20px">
-          <div style="font-size:2rem;margin-bottom:10px">🏆</div>
-          <div style="font-size:.84rem;color:var(--muted)">Winners are pinned in your Discord channel each Sunday.<br>Hall of Fame API endpoint coming soon.</div>
-        </div>
-      </div>`;
+        <div class="cotw-theory">"${s.theory}"</div>
+      </div>`).join('');
 
   } catch(e) {
-    console.error("COTW load error:", e);
+    console.error("COTW current load error:", e);
+    document.getElementById("cotw-current-list").innerHTML =
+      `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Could not load submissions</div></div>`;
   }
+}
+
+async function loadCOTWWinners(reset = false) {
+  try {
+    if (reset) _cotwWinnersPage = 1;
+
+    const d = await get(`/cotw/winners?page=${_cotwWinnersPage}&limit=${COTW_PAGE_SIZE}`);
+
+    document.getElementById("cotw-weeks-run").textContent = fmt(d.total);
+
+    const listEl   = document.getElementById("cotw-hof-list");
+    const moreBtn  = document.getElementById("cotw-load-more");
+
+    if (d.total === 0) {
+      listEl.innerHTML = `<div class="empty"><div class="empty-icon">🏆</div><div class="empty-text">No winners yet — first announcement coming Sunday!</div></div>`;
+      moreBtn.style.display = "none";
+      return;
+    }
+
+    const cards = d.winners.map((w, i) => {
+      const globalRank = (_cotwWinnersPage - 1) * COTW_PAGE_SIZE + i + 1;
+      const isFirst    = globalRank === 1 && reset;
+      return `
+        <div class="cotw-card ${isFirst ? 'winner' : ''}" style="margin-bottom:12px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="cotw-rank ${isFirst ? 'gold' : ''}" style="font-size:${isFirst?'2.4':'1.6'}rem">${isFirst ? '🏆' : '#' + globalRank}</div>
+              <div>
+                <div style="font-weight:700;font-size:.92rem">${w.winner_username}</div>
+                <div style="font-size:.7rem;color:var(--muted)">${w.week}  ·  ${ago(w.announced_at)}</div>
+              </div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--gold2)">${w.vote_count}</div>
+              <div style="font-size:.66rem;color:var(--muted)">vote${w.vote_count !== 1 ? 's' : ''} of ${w.total_entries}</div>
+            </div>
+          </div>
+          <div class="cotw-theory" style="font-size:.88rem;border-left:3px solid ${isFirst ? 'var(--gold)' : 'var(--border)'};padding-left:12px;margin-left:4px">
+            "${w.theory}"
+          </div>
+        </div>`;
+    }).join('');
+
+    if (reset) {
+      listEl.innerHTML = cards;
+    } else {
+      listEl.innerHTML += cards;
+    }
+
+    moreBtn.style.display = d.has_more ? "inline-block" : "none";
+
+  } catch(e) {
+    console.error("COTW winners load error:", e);
+    if (reset) {
+      document.getElementById("cotw-hof-list").innerHTML =
+        `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Could not load hall of fame</div></div>`;
+    }
+  }
+}
+
+async function loadMoreWinners() {
+  _cotwWinnersPage++;
+  await loadCOTWWinners(false);
 }
 
 /* ════════════════════════════════════════════════════
