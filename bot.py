@@ -43,6 +43,11 @@ KEYWORD_ALERT_CHANNEL_ID = 1486468826739642468   # Private mod keyword alerts
 
 EASTERN   = ZoneInfo("America/New_York")
 POST_HOUR = 20  # 8 PM Eastern — daily posts + COTW phase triggers
+
+# Podcast RSS
+PODCAST_RSS_URL       = "https://anchor.fm/s/c0340eac/podcast/rss"
+PODCAST_CHANNEL_ID    = 1127292711012139062
+PODCAST_LISTENER_ROLE = 1166481664176828496
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -1517,7 +1522,7 @@ def build_cipher_embed(cipher: dict) -> discord.Embed:
         color=discord.Color.teal(),
     )
     embed.add_field(name="📟 Encoded Message", value=f"```{cipher['encoded']}```",                     inline=False)
-    embed.add_field(name="💡 Hint",            value=cipher["hint"],                                   inline=False)
+    embed.add_field(name="💡 Hint",            value=f"||{cipher['hint']}||",                          inline=False)
     embed.add_field(name="✅ Solution",        value=f"||{cipher['solution']}||",                      inline=True)
     embed.add_field(name="📖 About",           value=cipher["explanation"],                             inline=False)
     embed.set_footer(text="Click the Solution field to reveal the answer. Can you crack it first? 🔍")
@@ -1613,6 +1618,115 @@ async def slash_message(interaction: discord.Interaction, channel: discord.TextC
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# PODCAST RSS FEED CHECKER — every 60 minutes
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def get_latest_rss_episode(feed_url: str) -> dict | None:
+    """Fetch the RSS feed and return the latest episode as a dict, or None on error."""
+    try:
+        import feedparser
+        feed = feedparser.parse(feed_url)
+        if not feed.entries:
+            return None
+        entry = feed.entries[0]
+        # Duration — try itunes:duration first, fallback to enclosure length
+        duration = ""
+        if hasattr(entry, "itunes_duration"):
+            raw = entry.itunes_duration
+            # Convert seconds integer to h:mm:ss if needed
+            if raw.isdigit():
+                secs = int(raw)
+                h, m, s = secs // 3600, (secs % 3600) // 60, secs % 60
+                duration = f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
+            else:
+                duration = raw
+        # Episode number
+        ep_num = getattr(entry, "itunes_episode", None)
+        # Image — episode image first, fallback to feed image
+        image_url = None
+        if hasattr(entry, "image") and hasattr(entry.image, "href"):
+            image_url = entry.image.href
+        elif feed.feed.get("image"):
+            image_url = feed.feed.image.get("href")
+        # Listen link
+        link = entry.get("link") or feed.feed.get("link", "")
+        return {
+            "guid":        entry.get("id") or entry.get("link") or entry.title,
+            "title":       entry.title,
+            "summary":     entry.get("summary", ""),
+            "duration":    duration,
+            "ep_num":      ep_num,
+            "image_url":   image_url,
+            "link":        link,
+            "podcast_name": feed.feed.get("title", "The Conspiracy Podcast"),
+        }
+    except Exception as e:
+        print(f"⚠️ RSS fetch error: {e}")
+        return None
+
+
+def rss_episode_already_posted(guid: str) -> bool:
+    """Return True if we've already announced this episode GUID."""
+    try:
+        execute("""
+            CREATE TABLE IF NOT EXISTS rss_posted (
+                guid       TEXT PRIMARY KEY,
+                posted_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        execute("INSERT INTO rss_posted (guid) VALUES (%s)", (guid,))
+        return False   # Successfully inserted — new episode
+    except Exception:
+        return True    # Unique violation — already posted
+
+
+@tasks.loop(minutes=60)
+async def podcast_rss_checker():
+    """Check the podcast RSS feed every 60 minutes and announce new episodes."""
+    episode = get_latest_rss_episode(PODCAST_RSS_URL)
+    if not episode:
+        return
+    if rss_episode_already_posted(episode["guid"]):
+        return
+
+    channel = bot.get_channel(PODCAST_CHANNEL_ID)
+    if not channel:
+        print(f"⚠️ RSS: Could not find podcast channel {PODCAST_CHANNEL_ID}")
+        return
+
+    # Build embed
+    embed = discord.Embed(
+        title=episode["title"],
+        url=episode["link"] or None,
+        color=discord.Color.from_rgb(30, 215, 96),  # Spotify green
+    )
+    embed.set_author(name=f"🎙️ New Episode — {episode['podcast_name']}")
+
+    # Trim summary to 300 chars
+    summary = episode.get("summary", "").strip()
+    if summary:
+        # Strip basic HTML tags that sometimes appear in RSS summaries
+        summary = _re.sub(r"<[^>]+>", "", summary)
+        embed.description = summary[:300] + ("…" if len(summary) > 300 else "")
+
+    if episode["duration"]:
+        embed.add_field(name="⏱️ Duration", value=episode["duration"], inline=True)
+    if episode["ep_num"]:
+        embed.add_field(name="🎧 Episode",  value=f"#{episode['ep_num']}", inline=True)
+    if episode["link"]:
+        embed.add_field(name="🔗 Listen",   value=f"[Click here to listen]({episode['link']})", inline=False)
+
+    if episode["image_url"]:
+        embed.set_thumbnail(url=episode["image_url"])
+
+    embed.set_footer(text="New episode just dropped! 🕵️  Don't forget to subscribe & leave a review.")
+
+    role_mention = f"<@&{PODCAST_LISTENER_ROLE}>"
+    await channel.send(content=role_mention, embed=embed)
+    print(f"📡 RSS: Announced new episode — {episode['title']}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # SCHEDULER — 8 PM EASTERN, every day
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1686,6 +1800,11 @@ async def on_ready():
     if not community_scheduler.is_running():
         community_scheduler.start()
         print(f"⏰  Scheduler started — daily posts at {POST_HOUR}:00 ET")
+
+    # Start RSS checker
+    if not podcast_rss_checker.is_running():
+        podcast_rss_checker.start()
+        print(f"📡  RSS checker started — checking every 60 minutes")
 
 
 @bot.event
