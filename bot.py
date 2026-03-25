@@ -511,6 +511,19 @@ def init_db():
                     entered_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                     UNIQUE(giveaway_id, user_id)
                 );
+                CREATE TABLE IF NOT EXISTS polls (
+                    id          SERIAL PRIMARY KEY,
+                    guild_id    TEXT NOT NULL,
+                    channel_id  TEXT NOT NULL,
+                    message_id  TEXT UNIQUE,
+                    question    TEXT NOT NULL,
+                    options     JSONB NOT NULL,
+                    created_by  TEXT NOT NULL,
+                    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    closed      BOOLEAN DEFAULT FALSE
+                );
+                CREATE INDEX IF NOT EXISTS idx_polls_guild ON polls(guild_id);
+                CREATE INDEX IF NOT EXISTS idx_polls_msg   ON polls(message_id);
                 CREATE TABLE IF NOT EXISTS cotw_submissions (
                     id           SERIAL PRIMARY KEY,
                     guild_id     TEXT NOT NULL,
@@ -861,6 +874,91 @@ def api_giveaway_entries(giveaway_id):
                                      "avatar_url": e["avatar_url"], "entered_at": e["entered_at"].isoformat()} for e in entries]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# ─── POLLS DASHBOARD API ─────────────────────────────────────────────────────
+@api.route("/api/polls")
+def api_polls():
+    """Returns all polls, newest first, with live vote counts fetched from Discord."""
+    try:
+        rows = fetchall("""
+            SELECT id, guild_id, channel_id, message_id, question, options,
+                   created_by, created_at, closed
+            FROM polls
+            ORDER BY created_at DESC
+            LIMIT 50
+        """)
+        result = []
+        for r in rows:
+            d = dict(r)
+            d["created_at"] = r["created_at"].isoformat() if r["created_at"] else None
+            result.append(d)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api.route("/api/polls/<message_id>/results")
+def api_poll_results(message_id):
+    """Returns a poll's question, options, and live vote counts for a given message ID."""
+    try:
+        poll = fetchone("SELECT * FROM polls WHERE message_id = %s", (message_id,))
+        if not poll:
+            return jsonify({"error": "Poll not found"}), 404
+
+        options = poll["options"]
+
+        # Fetch live reaction counts via bot
+        reaction_map = {}
+        total_votes  = 0
+        try:
+            guild      = bot.get_guild(int(poll["guild_id"]))
+            channel    = guild.get_channel(int(poll["channel_id"])) if guild else None
+            if channel:
+                import asyncio
+                loop    = bot.loop
+                future  = asyncio.run_coroutine_threadsafe(
+                    channel.fetch_message(int(message_id)), loop
+                )
+                msg = future.result(timeout=10)
+                for reaction in msg.reactions:
+                    emoji = str(reaction.emoji)
+                    if emoji in NUMBER_EMOJIS:
+                        idx = NUMBER_EMOJIS.index(emoji)
+                        if idx < len(options):
+                            votes = max(0, reaction.count - 1)
+                            reaction_map[idx] = votes
+                            total_votes += votes
+        except Exception as e:
+            print(f"⚠️ API poll reaction fetch error: {e}")
+
+        winner_idx = max(reaction_map, key=reaction_map.get) if reaction_map and max(reaction_map.values()) > 0 else None
+
+        results = []
+        for i, opt in enumerate(options):
+            votes = reaction_map.get(i, 0)
+            pct   = round((votes / total_votes) * 100) if total_votes > 0 else 0
+            results.append({
+                "index":     i,
+                "option":    opt,
+                "votes":     votes,
+                "pct":       pct,
+                "is_winner": (i == winner_idx),
+            })
+
+        return jsonify({
+            "poll": {
+                "message_id": poll["message_id"],
+                "question":   poll["question"],
+                "created_by": poll["created_by"],
+                "created_at": poll["created_at"].isoformat() if poll["created_at"] else None,
+                "closed":     poll["closed"],
+                "total_votes": total_votes,
+            },
+            "results": results,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 # ─── FOURTHWALL API ───────────────────────────────────────────────────────────
 @api.route("/api/fw/overview")
@@ -1242,14 +1340,12 @@ async def poll_cmd(ctx, *, args: str = ""):
         await ctx.send('❌ Usage: `!poll "Question" "Option 1" "Option 2" ...` (min 2 options, max 10, all in quotes)')
         return
     question = parts[0]
-    options  = parts[1:11]  # max 10
+    options  = parts[1:11]
 
     embed = discord.Embed(title=f"📊 {question}", color=discord.Color.blue())
-    lines = []
-    for i, opt in enumerate(options):
-        lines.append(f"{NUMBER_EMOJIS[i]}  {opt}")
+    lines = [f"{NUMBER_EMOJIS[i]}  {opt}" for i, opt in enumerate(options)]
     embed.description = "\n\n".join(lines)
-    embed.set_footer(text=f"Poll by {ctx.author.display_name}  •  React to vote!")
+    embed.set_footer(text=f"Poll by {ctx.author.display_name}  •  React to vote!  •  Use !pollresults <message_id> to see results.")
 
     try:
         await ctx.message.delete()
@@ -1259,6 +1355,93 @@ async def poll_cmd(ctx, *, args: str = ""):
     poll_msg = await ctx.channel.send(embed=embed)
     for i in range(len(options)):
         await poll_msg.add_reaction(NUMBER_EMOJIS[i])
+
+    # Save to database
+    try:
+        execute(
+            "INSERT INTO polls (guild_id, channel_id, message_id, question, options, created_by) VALUES (%s,%s,%s,%s,%s,%s)",
+            (str(ctx.guild.id), str(ctx.channel.id), str(poll_msg.id),
+             question, psycopg2.extras.Json(options), str(ctx.author)),
+        )
+    except Exception as e:
+        print(f"⚠️ Poll DB save error: {e}")
+
+
+@bot.command(name="pollresults")
+@check_manager()
+async def poll_results(ctx, message_id: str = None):
+    """Post a results embed for a poll. Usage: !pollresults <message_id>"""
+    if not message_id:
+        await ctx.send("❌ Usage: `!pollresults <message_id>`\nRight-click the poll message → Copy Message ID.")
+        return
+
+    # Look up poll in DB
+    poll = fetchone("SELECT * FROM polls WHERE message_id = %s AND guild_id = %s", (message_id, str(ctx.guild.id)))
+    if not poll:
+        await ctx.send("❌ Poll not found. Make sure you're using the correct message ID for a poll created in this server.")
+        return
+
+    options = poll["options"]
+
+    # Fetch the original poll message to read live reaction counts
+    try:
+        poll_channel = ctx.guild.get_channel(int(poll["channel_id"]))
+        poll_msg     = await poll_channel.fetch_message(int(message_id))
+    except Exception as e:
+        await ctx.send(f"❌ Could not fetch the original poll message — it may have been deleted.\n`{e}`")
+        return
+
+    # Map emoji → vote count (subtract 1 for the bot's own reaction)
+    reaction_map = {}
+    for reaction in poll_msg.reactions:
+        emoji = str(reaction.emoji)
+        if emoji in NUMBER_EMOJIS:
+            idx = NUMBER_EMOJIS.index(emoji)
+            if idx < len(options):
+                reaction_map[idx] = max(0, reaction.count - 1)
+
+    total_votes = sum(reaction_map.values())
+
+    # Build results embed
+    embed = discord.Embed(
+        title=f"📊 Poll Results",
+        description=f"**{poll['question']}**",
+        color=discord.Color.blue(),
+        timestamp=datetime.datetime.utcnow(),
+    )
+
+    if total_votes == 0:
+        embed.add_field(name="No votes yet!", value="Nobody has voted on this poll.", inline=False)
+    else:
+        winner_idx   = max(reaction_map, key=reaction_map.get) if reaction_map else None
+        winner_votes = reaction_map.get(winner_idx, 0)
+
+        for i, opt in enumerate(options):
+            votes      = reaction_map.get(i, 0)
+            pct        = round((votes / total_votes) * 100) if total_votes > 0 else 0
+            bar_filled = round(pct / 10)
+            bar        = "█" * bar_filled + "░" * (10 - bar_filled)
+            is_winner  = (i == winner_idx and winner_votes > 0)
+            label      = f"{NUMBER_EMOJIS[i]}  {'🏆 ' if is_winner else ''}{opt}"
+            value      = f"`{bar}` {pct}%  —  {votes} vote{'s' if votes != 1 else ''}"
+            embed.add_field(name=label, value=value, inline=False)
+
+        embed.add_field(name="Total Votes", value=str(total_votes), inline=True)
+        if winner_idx is not None and winner_votes > 0:
+            embed.add_field(name="🏆 Leading", value=options[winner_idx], inline=True)
+
+    embed.set_footer(text=f"Poll created by {poll['created_by'].split('#')[0]}  •  Message ID: {message_id}")
+
+    await ctx.send(embed=embed)
+
+    # Persist latest vote snapshot to DB
+    try:
+        execute(
+            "UPDATE polls SET closed = TRUE WHERE message_id = %s",
+            (message_id,),
+        )
+    except Exception as e:
+        print(f"⚠️ Poll results DB update error: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
