@@ -575,7 +575,21 @@ def init_db():
                     author_name TEXT NOT NULL,
                     timestamp   TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 );
-                CREATE INDEX IF NOT EXISTS idx_jorge_ts ON jorge_mentions(timestamp);
+                CREATE TABLE IF NOT EXISTS jorge_pings (
+                    id          SERIAL PRIMARY KEY,
+                    user_id     TEXT NOT NULL,
+                    username    TEXT NOT NULL,
+                    avatar_url  TEXT,
+                    pinged_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+                CREATE TABLE IF NOT EXISTS jorge_panel (
+                    id          SERIAL PRIMARY KEY,
+                    message_id  TEXT NOT NULL,
+                    channel_id  TEXT NOT NULL,
+                    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+                CREATE INDEX IF NOT EXISTS idx_jorge_ts    ON jorge_mentions(timestamp);
+                CREATE INDEX IF NOT EXISTS idx_jorge_pings ON jorge_pings(user_id, pinged_at);
                 CREATE TABLE IF NOT EXISTS daily_tasks_fired (
                     task_name  TEXT NOT NULL,
                     fired_date DATE NOT NULL,
@@ -1090,9 +1104,8 @@ def api_jorge_debug():
 
 @api.route("/api/jorge")
 def api_jorge():
-    """Returns Jorge's last post time and how many times he's been tagged since then."""
+    """Returns Jorge's last post time, button pings, and manual mentions since then."""
     try:
-        # Jorge's last message in the server, excluding the exempt channel
         last_post = fetchone("""
             SELECT timestamp, channel_name FROM messages
             WHERE user_id = %s AND channel_id != %s
@@ -1101,45 +1114,34 @@ def api_jorge():
 
         since = last_post["timestamp"] if last_post else None
 
-        # Count mentions in the watch channel since his last post
         if since:
-            mention_count = fetchone("""
-                SELECT COUNT(*) as c FROM jorge_mentions
-                WHERE timestamp >= %s
-            """, (since,))["c"]
-            recent = fetchall("""
-                SELECT author_name, timestamp FROM jorge_mentions
-                WHERE timestamp >= %s
-                ORDER BY timestamp DESC LIMIT 10
-            """, (since,))
+            ping_count    = fetchone("SELECT COUNT(*) as c FROM jorge_pings WHERE pinged_at >= %s", (since,))["c"]
+            mention_count = fetchone("SELECT COUNT(*) as c FROM jorge_mentions WHERE timestamp >= %s", (since,))["c"]
+            recent_pings  = fetchall("SELECT username, pinged_at FROM jorge_pings WHERE pinged_at >= %s ORDER BY pinged_at DESC LIMIT 10", (since,))
+            top_pinger    = fetchone("SELECT username, COUNT(*) as c FROM jorge_pings WHERE pinged_at >= %s GROUP BY username ORDER BY c DESC LIMIT 1", (since,))
         else:
-            # No post on record — count all mentions ever
+            ping_count    = fetchone("SELECT COUNT(*) as c FROM jorge_pings")["c"]
             mention_count = fetchone("SELECT COUNT(*) as c FROM jorge_mentions")["c"]
-            recent = fetchall("""
-                SELECT author_name, timestamp FROM jorge_mentions
-                ORDER BY timestamp DESC LIMIT 10
-            """)
+            recent_pings  = fetchall("SELECT username, pinged_at FROM jorge_pings ORDER BY pinged_at DESC LIMIT 10")
+            top_pinger    = fetchone("SELECT username, COUNT(*) as c FROM jorge_pings GROUP BY username ORDER BY c DESC LIMIT 1")
 
-        # All-time mention count
-        all_time = fetchone("SELECT COUNT(*) as c FROM jorge_mentions")["c"]
-
-        # Most frequent tagger
-        top_tagger = fetchone("""
-            SELECT author_name, COUNT(*) as c FROM jorge_mentions
-            WHERE timestamp >= %s
-            GROUP BY author_name ORDER BY c DESC LIMIT 1
-        """, (since,)) if since else None
+        all_time_pings    = fetchone("SELECT COUNT(*) as c FROM jorge_pings")["c"]
+        all_time_mentions = fetchone("SELECT COUNT(*) as c FROM jorge_mentions")["c"]
 
         return jsonify({
-            "last_post_at":      since.isoformat() if since else None,
-            "last_post_channel": last_post["channel_name"] if last_post else None,
-            "mentions_since":    mention_count,
-            "all_time_mentions": all_time,
-            "top_tagger":        top_tagger["author_name"].split("#")[0] if top_tagger else None,
-            "top_tagger_count":  top_tagger["c"] if top_tagger else 0,
-            "recent_mentions":   [
-                {"author": r["author_name"].split("#")[0], "at": r["timestamp"].isoformat()}
-                for r in recent
+            "last_post_at":       since.isoformat() if since else None,
+            "last_post_channel":  last_post["channel_name"] if last_post else None,
+            "mentions_since":     ping_count + mention_count,
+            "ping_count":         ping_count,
+            "mention_count":      mention_count,
+            "all_time_mentions":  all_time_pings + all_time_mentions,
+            "all_time_pings":     all_time_pings,
+            "all_time_manual":    all_time_mentions,
+            "top_tagger":         top_pinger["username"].split("#")[0] if top_pinger else None,
+            "top_tagger_count":   top_pinger["c"] if top_pinger else 0,
+            "recent_mentions": [
+                {"author": r["username"].split("#")[0], "at": r["pinged_at"].isoformat()}
+                for r in recent_pings
             ],
         })
     except Exception as e:
@@ -1522,6 +1524,216 @@ async def giveaway_entries_cmd(ctx, giveaway_id: int = None):
     if gw["winner_ids"]:
         embed.add_field(name="🏆 Winner(s)", value=" ".join(f"<@{uid}>" for uid in gw["winner_ids"]), inline=False)
     await ctx.send(embed=embed)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# JORGE PING PANEL
+# ═══════════════════════════════════════════════════════════════════════════════
+
+JORGE_PING_COOLDOWN_HOURS = 12
+
+
+def jorge_get_since():
+    """Return the timestamp of Jorge's last post (excluding exempt channel), or None."""
+    row = fetchone(
+        "SELECT timestamp FROM messages WHERE user_id = %s AND channel_id != %s "
+        "ORDER BY timestamp DESC LIMIT 1",
+        (str(JORGE_USER_ID), str(JORGE_EXCLUDE_CHANNEL)),
+    )
+    return row["timestamp"] if row else None
+
+
+def jorge_ping_count_since(since) -> int:
+    """Total button pings since Jorge's last post (or all-time if since is None)."""
+    if since:
+        return fetchone(
+            "SELECT COUNT(*) as c FROM jorge_pings WHERE pinged_at >= %s", (since,)
+        )["c"]
+    return fetchone("SELECT COUNT(*) as c FROM jorge_pings")["c"]
+
+
+def jorge_mention_count_since(since) -> int:
+    """Total manual @mentions since Jorge's last post (or all-time)."""
+    if since:
+        return fetchone(
+            "SELECT COUNT(*) as c FROM jorge_mentions WHERE timestamp >= %s", (since,)
+        )["c"]
+    return fetchone("SELECT COUNT(*) as c FROM jorge_mentions")["c"]
+
+
+def jorge_user_last_ping(user_id: str):
+    """Return the datetime of the user's most recent button ping, or None."""
+    row = fetchone(
+        "SELECT pinged_at FROM jorge_pings WHERE user_id = %s ORDER BY pinged_at DESC LIMIT 1",
+        (user_id,),
+    )
+    return row["pinged_at"] if row else None
+
+
+def jorge_recent_pingers(since, limit=8):
+    """Return recent button pingers (username, pinged_at) since Jorge's last post."""
+    if since:
+        return fetchall(
+            "SELECT username, avatar_url, pinged_at FROM jorge_pings "
+            "WHERE pinged_at >= %s ORDER BY pinged_at DESC LIMIT %s",
+            (since, limit),
+        )
+    return fetchall(
+        "SELECT username, avatar_url, pinged_at FROM jorge_pings "
+        "ORDER BY pinged_at DESC LIMIT %s", (limit,)
+    )
+
+
+def build_jorge_embed(since, ping_count, mention_count) -> discord.Embed:
+    """Build the persistent Jorge panel embed."""
+    total = ping_count + mention_count
+
+    if total == 0:
+        flavour = "👀 Nobody has pinged Jorge yet. Be the first."
+    elif total < 5:
+        flavour = "🕵️ The hunt has begun..."
+    elif total < 10:
+        flavour = "😬 He can feel it. Somewhere."
+    elif total < 20:
+        flavour = "📣 Jorge. JORGE. We know you're out there."
+    elif total < 50:
+        flavour = "🗳️ At this point it's an organised campaign."
+    elif total < 100:
+        flavour = "🚨 This is getting out of hand."
+    else:
+        flavour = "☠️ Someone physically go find Jorge."
+
+    embed = discord.Embed(
+        title="🕵️  WHERE IS JORGE?",
+        description=(
+            f"*Jorge was last spotted **{ago_sync(since)}** ago.*\n\n"
+            f"{flavour}"
+        ) if since else (
+            f"*Jorge has never been seen in this server.*\n\n{flavour}"
+        ),
+        color=discord.Color.from_rgb(192, 57, 43),
+    )
+    embed.add_field(
+        name="🔘 Button Pings",
+        value=f"**{ping_count}**\nsince last sighting",
+        inline=True,
+    )
+    embed.add_field(
+        name="📣 Manual @Mentions",
+        value=f"**{mention_count}**\nacross all channels",
+        inline=True,
+    )
+    embed.add_field(
+        name="📊 Total",
+        value=f"**{total}**\ncombined signals",
+        inline=True,
+    )
+
+    # Recent pingers
+    recent = jorge_recent_pingers(since)
+    if recent:
+        names = "  ".join(
+            f"`{r['username'].split('#')[0]}`  *{ago_sync(r['pinged_at'])}*"
+            for r in recent
+        )
+        embed.add_field(name="🕐 Recent Pings", value=names[:1024], inline=False)
+
+    embed.set_footer(text="One ping per person every 12 hours  •  Updates in real time")
+    return embed
+
+
+async def update_jorge_panel():
+    """Refresh the persistent Jorge panel embed in Discord."""
+    row = fetchone("SELECT message_id, channel_id FROM jorge_panel ORDER BY id DESC LIMIT 1")
+    if not row:
+        return
+    channel = bot.get_channel(int(row["channel_id"]))
+    if not channel:
+        return
+    try:
+        msg          = await channel.fetch_message(int(row["message_id"]))
+        since        = jorge_get_since()
+        ping_count   = jorge_ping_count_since(since)
+        mention_count = jorge_mention_count_since(since)
+        embed        = build_jorge_embed(since, ping_count, mention_count)
+        await msg.edit(embed=embed, view=JorgePingView())
+    except Exception as e:
+        print(f"⚠️ Jorge panel update error: {e}")
+
+
+async def post_jorge_panel():
+    """Post a fresh Jorge panel and save its message ID."""
+    channel = bot.get_channel(JORGE_WATCH_CHANNEL)
+    if not channel:
+        print("⚠️ Jorge panel: watch channel not found")
+        return
+    since         = jorge_get_since()
+    ping_count    = jorge_ping_count_since(since)
+    mention_count = jorge_mention_count_since(since)
+    embed         = build_jorge_embed(since, ping_count, mention_count)
+    view          = JorgePingView()
+    bot.add_view(view)
+    msg = await channel.send(embed=embed, view=view)
+    # Clear old panel records and save the new one
+    execute("DELETE FROM jorge_panel")
+    execute(
+        "INSERT INTO jorge_panel (message_id, channel_id) VALUES (%s, %s)",
+        (str(msg.id), str(channel.id)),
+    )
+    print(f"🕵️ Jorge panel posted (message {msg.id})")
+
+
+class JorgePingView(discord.ui.View):
+    """Persistent ping button — one press per user per 12 hours."""
+
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(
+        label="📡  Ping Jorge",
+        style=discord.ButtonStyle.danger,
+        custom_id="jorge_ping_button",
+    )
+    async def ping_jorge(self, interaction: discord.Interaction, button: discord.ui.Button):
+        user_id  = str(interaction.user.id)
+        now      = datetime.datetime.utcnow()
+
+        # Cooldown check
+        last = jorge_user_last_ping(user_id)
+        if last:
+            elapsed = (now - last.replace(tzinfo=None)).total_seconds()
+            remaining = JORGE_PING_COOLDOWN_HOURS * 3600 - elapsed
+            if remaining > 0:
+                h = int(remaining // 3600)
+                m = int((remaining % 3600) // 60)
+                await interaction.response.send_message(
+                    f"⏳ You already pinged Jorge! You can ping again in **{h}h {m}m**.\n"
+                    f"*The search continues...*",
+                    ephemeral=True,
+                )
+                return
+
+        # Record the ping
+        avatar = str(interaction.user.display_avatar.url) if interaction.user.display_avatar else ""
+        execute(
+            "INSERT INTO jorge_pings (user_id, username, avatar_url, pinged_at) VALUES (%s,%s,%s,%s)",
+            (user_id, str(interaction.user), avatar, now),
+        )
+
+        # Work out new totals
+        since         = jorge_get_since()
+        ping_count    = jorge_ping_count_since(since)
+        mention_count = jorge_mention_count_since(since)
+        total         = ping_count + mention_count
+
+        await interaction.response.send_message(
+            f"📡 **Ping sent!** Jorge has been signalled **{total}** time{'s' if total != 1 else ''} "
+            f"since his last sighting.\n*Come out, come out, wherever you are... 🕵️*",
+            ephemeral=True,
+        )
+
+        # Update the panel embed
+        await update_jorge_panel()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -2192,6 +2404,29 @@ async def on_ready():
             print(f"🔄  Restored {len(active)} active giveaway(s)")
     except Exception as e:
         print(f"⚠️  Could not restore giveaways: {e}")
+
+    # Jorge ping panel — restore existing or post fresh
+    try:
+        bot.add_view(JorgePingView())   # re-register persistent view for button handling
+        panel = fetchone("SELECT message_id, channel_id FROM jorge_panel ORDER BY id DESC LIMIT 1")
+        if panel:
+            # Try to fetch the existing message; if it's gone, post a new one
+            channel = bot.get_channel(int(panel["channel_id"]))
+            if channel:
+                try:
+                    await channel.fetch_message(int(panel["message_id"]))
+                    await update_jorge_panel()
+                    print(f"🕵️  Jorge panel restored (message {panel['message_id']})")
+                except discord.NotFound:
+                    print("🕵️  Jorge panel message missing — posting fresh")
+                    await post_jorge_panel()
+            else:
+                print("⚠️  Jorge panel channel not found")
+        else:
+            print("🕵️  No Jorge panel found — posting fresh")
+            await post_jorge_panel()
+    except Exception as e:
+        print(f"⚠️  Could not restore Jorge panel: {e}")
 
     # Start scheduler
     if not community_scheduler.is_running():
