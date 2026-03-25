@@ -41,6 +41,11 @@ RABBIT_HOLE_CHANNEL_ID   = 1486466347821957252   # Daily Rabbit Hole
 CIPHER_CHANNEL_ID        = 1486466469750378566   # Cipher of the Day
 KEYWORD_ALERT_CHANNEL_ID = 1486468826739642468   # Private mod keyword alerts
 
+# Jorge mention tracker
+JORGE_USER_ID          = 488070524191375361
+JORGE_WATCH_CHANNEL    = 1486488345826820236    # Channel to watch for Jorge mentions
+JORGE_EXCLUDE_CHANNEL  = 1166458975341006908    # Exclude this channel from his "last posted" check
+
 EASTERN   = ZoneInfo("America/New_York")
 POST_HOUR = 20  # 8 PM Eastern — daily posts + COTW phase triggers
 
@@ -549,6 +554,15 @@ def init_db():
                     added_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                     UNIQUE(guild_id, keyword)
                 );
+                CREATE TABLE IF NOT EXISTS jorge_mentions (
+                    id          SERIAL PRIMARY KEY,
+                    channel_id  TEXT NOT NULL,
+                    message_id  TEXT NOT NULL UNIQUE,
+                    author_id   TEXT NOT NULL,
+                    author_name TEXT NOT NULL,
+                    timestamp   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+                CREATE INDEX IF NOT EXISTS idx_jorge_ts ON jorge_mentions(timestamp);
                 CREATE TABLE IF NOT EXISTS daily_tasks_fired (
                     task_name  TEXT NOT NULL,
                     fired_date DATE NOT NULL,
@@ -960,6 +974,65 @@ def api_poll_results(message_id):
         return jsonify({"error": str(e)}), 500
 
 
+# ─── JORGE MENTION TRACKER API ───────────────────────────────────────────────
+@api.route("/api/jorge")
+def api_jorge():
+    """Returns Jorge's last post time and how many times he's been tagged since then."""
+    try:
+        # Jorge's last message in the server, excluding the exempt channel
+        last_post = fetchone("""
+            SELECT timestamp, channel_name FROM messages
+            WHERE user_id = %s AND channel_id != %s
+            ORDER BY timestamp DESC LIMIT 1
+        """, (str(JORGE_USER_ID), str(JORGE_EXCLUDE_CHANNEL)))
+
+        since = last_post["timestamp"] if last_post else None
+
+        # Count mentions in the watch channel since his last post
+        if since:
+            mention_count = fetchone("""
+                SELECT COUNT(*) as c FROM jorge_mentions
+                WHERE timestamp >= %s
+            """, (since,))["c"]
+            recent = fetchall("""
+                SELECT author_name, timestamp FROM jorge_mentions
+                WHERE timestamp >= %s
+                ORDER BY timestamp DESC LIMIT 10
+            """, (since,))
+        else:
+            # No post on record — count all mentions ever
+            mention_count = fetchone("SELECT COUNT(*) as c FROM jorge_mentions")["c"]
+            recent = fetchall("""
+                SELECT author_name, timestamp FROM jorge_mentions
+                ORDER BY timestamp DESC LIMIT 10
+            """)
+
+        # All-time mention count
+        all_time = fetchone("SELECT COUNT(*) as c FROM jorge_mentions")["c"]
+
+        # Most frequent tagger
+        top_tagger = fetchone("""
+            SELECT author_name, COUNT(*) as c FROM jorge_mentions
+            WHERE timestamp >= %s
+            GROUP BY author_name ORDER BY c DESC LIMIT 1
+        """, (since,)) if since else None
+
+        return jsonify({
+            "last_post_at":      since.isoformat() if since else None,
+            "last_post_channel": last_post["channel_name"] if last_post else None,
+            "mentions_since":    mention_count,
+            "all_time_mentions": all_time,
+            "top_tagger":        top_tagger["author_name"].split("#")[0] if top_tagger else None,
+            "top_tagger_count":  top_tagger["c"] if top_tagger else 0,
+            "recent_mentions":   [
+                {"author": r["author_name"].split("#")[0], "at": r["timestamp"].isoformat()}
+                for r in recent
+            ],
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ─── FOURTHWALL API ───────────────────────────────────────────────────────────
 @api.route("/api/fw/overview")
 def fw_overview():
@@ -1076,6 +1149,17 @@ def check_manager():
 # ═══════════════════════════════════════════════════════════════════════════════
 # GIVEAWAY SYSTEM
 # ═══════════════════════════════════════════════════════════════════════════════
+
+def ago_sync(ts) -> str:
+    """Return a human-friendly time-ago string from a datetime object."""
+    if not ts: return "a while ago"
+    diff = datetime.datetime.utcnow() - ts.replace(tzinfo=None)
+    s = int(diff.total_seconds())
+    if s < 60:    return "just now"
+    if s < 3600:  return f"{s // 60}m ago"
+    if s < 86400: return f"{s // 3600}h ago"
+    return f"{s // 86400}d ago"
+
 
 def parse_duration(text: str):
     m = _re.fullmatch(r"(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?", text.strip().lower())
@@ -2009,6 +2093,58 @@ async def on_message(message):
                 (str(message.author.id), str(message.author), str(message.guild.id), now, now, avatar))
     except Exception as e:
         print(f"DB error: {e}")
+
+    # Jorge mention tracker — watch channel only, skip if Jorge posted it himself
+    try:
+        jorge_mentioned = (
+            f"<@{JORGE_USER_ID}>" in message.content or
+            f"<@!{JORGE_USER_ID}>" in message.content
+        )
+        if (message.channel.id == JORGE_WATCH_CHANNEL
+                and message.author.id != JORGE_USER_ID
+                and jorge_mentioned):
+            execute(
+                "INSERT INTO jorge_mentions (channel_id, message_id, author_id, author_name, timestamp) "
+                "VALUES (%s,%s,%s,%s,%s) ON CONFLICT (message_id) DO NOTHING",
+                (str(message.channel.id), str(message.id),
+                 str(message.author.id), str(message.author), now),
+            )
+            # Work out count since Jorge's last post (excluding exempt channel)
+            last_post = fetchone(
+                "SELECT timestamp FROM messages WHERE user_id = %s AND channel_id != %s "
+                "ORDER BY timestamp DESC LIMIT 1",
+                (str(JORGE_USER_ID), str(JORGE_EXCLUDE_CHANNEL)),
+            )
+            since = last_post["timestamp"] if last_post else None
+            if since:
+                count = fetchone(
+                    "SELECT COUNT(*) as c FROM jorge_mentions WHERE timestamp >= %s", (since,)
+                )["c"]
+                since_txt = f"since his last post {ago_sync(since)}"
+            else:
+                count = fetchone("SELECT COUNT(*) as c FROM jorge_mentions")["c"]
+                since_txt = "all time (no post on record)"
+
+            # Build a fun escalating message based on count
+            if count == 1:
+                flavour = "The countdown begins. 👀"
+            elif count < 5:
+                flavour = "He can feel it."
+            elif count < 10:
+                flavour = "The pressure is building... 😬"
+            elif count < 20:
+                flavour = "Jorge. JORGE. 📣"
+            elif count < 50:
+                flavour = "At this point it's a campaign. 🗳️"
+            else:
+                flavour = "This is getting out of hand. 🚨"
+
+            await message.channel.send(
+                f"🕵️ **Jorge Tag Counter** — **{count}** time{'s' if count != 1 else ''} {since_txt}\n"
+                f"*{flavour}*"
+            )
+    except Exception as e:
+        print(f"Jorge tracker error: {e}")
 
     # Keyword alerts
     try:
