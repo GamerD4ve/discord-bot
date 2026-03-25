@@ -546,6 +546,19 @@ def init_db():
                     vote_msg_id TEXT,
                     PRIMARY KEY (guild_id, week)
                 );
+                CREATE TABLE IF NOT EXISTS cotw_winners (
+                    id           SERIAL PRIMARY KEY,
+                    guild_id     TEXT NOT NULL,
+                    week         TEXT NOT NULL,
+                    winner_user_id   TEXT NOT NULL,
+                    winner_username  TEXT NOT NULL,
+                    theory       TEXT NOT NULL,
+                    vote_count   INTEGER NOT NULL DEFAULT 0,
+                    total_entries INTEGER NOT NULL DEFAULT 0,
+                    announced_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    UNIQUE(guild_id, week)
+                );
+                CREATE INDEX IF NOT EXISTS idx_cotw_winners_week ON cotw_winners(guild_id, week);
                 CREATE TABLE IF NOT EXISTS keyword_alerts (
                     id       SERIAL PRIMARY KEY,
                     guild_id TEXT NOT NULL,
@@ -969,6 +982,83 @@ def api_poll_results(message_id):
                 "total_votes": total_votes,
             },
             "results": results,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── COTW API ─────────────────────────────────────────────────────────────────
+@api.route("/api/cotw/current")
+def api_cotw_current():
+    """Returns this week's submissions and phase state."""
+    try:
+        week  = current_week()
+        state = fetchone(
+            "SELECT * FROM cotw_state WHERE guild_id = %s AND week = %s",
+            (str(GUILD_ID), week)
+        )
+        subs  = fetchall(
+            "SELECT user_id, username, theory, submitted_at FROM cotw_submissions "
+            "WHERE guild_id = %s AND week = %s ORDER BY submitted_at",
+            (str(GUILD_ID), week)
+        )
+        return jsonify({
+            "week":        week,
+            "phase":       state["phase"] if state else "pending",
+            "vote_msg_id": state["vote_msg_id"] if state else None,
+            "submissions": [
+                {
+                    "username":     r["username"].split("#")[0],
+                    "theory":       r["theory"],
+                    "submitted_at": r["submitted_at"].isoformat(),
+                }
+                for r in subs
+            ],
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api.route("/api/cotw/winners")
+def api_cotw_winners():
+    """Returns paginated hall of fame. ?page=1&limit=10"""
+    try:
+        page  = max(1, int(request.args.get("page",  1)))
+        limit = max(1, min(50, int(request.args.get("limit", 10))))
+        offset = (page - 1) * limit
+
+        total = fetchone(
+            "SELECT COUNT(*) as c FROM cotw_winners WHERE guild_id = %s",
+            (str(GUILD_ID),)
+        )["c"]
+
+        rows = fetchall(
+            """
+            SELECT week, winner_username, theory, vote_count, total_entries, announced_at
+            FROM cotw_winners
+            WHERE guild_id = %s
+            ORDER BY announced_at DESC
+            LIMIT %s OFFSET %s
+            """,
+            (str(GUILD_ID), limit, offset)
+        )
+
+        return jsonify({
+            "total":    total,
+            "page":     page,
+            "limit":    limit,
+            "has_more": (offset + limit) < total,
+            "winners":  [
+                {
+                    "week":             r["week"],
+                    "winner_username":  r["winner_username"].split("#")[0],
+                    "theory":           r["theory"],
+                    "vote_count":       r["vote_count"],
+                    "total_entries":    r["total_entries"],
+                    "announced_at":     r["announced_at"].isoformat(),
+                }
+                for r in rows
+            ],
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1633,6 +1723,23 @@ async def cotw_announce_winner(guild_id: str = None, manual: bool = False):
         winner_idx   = max(reaction_counts, key=reaction_counts.get)
         winner_sub   = submissions[winner_idx]
         winner_votes = reaction_counts[winner_idx]
+
+        # Save to hall of fame
+        try:
+            execute("""
+                INSERT INTO cotw_winners
+                    (guild_id, week, winner_user_id, winner_username, theory, vote_count, total_entries)
+                VALUES (%s,%s,%s,%s,%s,%s,%s)
+                ON CONFLICT (guild_id, week) DO UPDATE SET
+                    winner_user_id  = EXCLUDED.winner_user_id,
+                    winner_username = EXCLUDED.winner_username,
+                    theory          = EXCLUDED.theory,
+                    vote_count      = EXCLUDED.vote_count,
+                    total_entries   = EXCLUDED.total_entries
+            """, (gid, week, winner_sub["user_id"], winner_sub["username"],
+                  winner_sub["theory"], winner_votes, len(submissions)))
+        except Exception as e:
+            print(f"⚠️ COTW winner DB save error: {e}")
         embed = discord.Embed(
             title="🏆 Conspiracy of the Week — WINNER ANNOUNCED!",
             description=(
